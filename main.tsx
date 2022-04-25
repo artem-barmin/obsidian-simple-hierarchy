@@ -7,6 +7,7 @@ import {
     Setting,
     TagCache,
     TFile,
+    WorkspaceLeaf,
 } from "obsidian";
 import _ from "lodash";
 import * as React from "react";
@@ -81,20 +82,23 @@ function refreshCacheForFile(
     }
 }
 
-function buildTreeCache(app: App, parentChildCache: ParentChildCache) {
-    _.map(app.metadataCache.resolvedLinks, (_links, path: string) =>
-        refreshCacheForFile(app, path, parentChildCache)
-    );
-}
-
 interface ParentChildCache {
     [key: string]: string[];
 }
 
-function getAllParents(path: string, relations: ParentChildCache) {
+interface BreadcrumbsParents {
+    level: number;
+    parents: string[];
+    path: string;
+}
+
+function getAllParents(
+    path: string,
+    relations: ParentChildCache
+): BreadcrumbsParents[] {
     const getParent = (path: string) =>
         _.keys(_.pickBy(relations, (child) => _.includes(child, path)));
-    const allParents = (level: number, path: string) => {
+    const allParents = (level: number, path: string): BreadcrumbsParents[] => {
         const parents = getParent(path);
         if (!parents.length) return [];
         return [
@@ -105,79 +109,83 @@ function getAllParents(path: string, relations: ParentChildCache) {
     return allParents(0, path);
 }
 
-function Breadcrumbs({ file, relations, counter }) {
-    return <div>{JSON.stringify(getAllParents(file, relations))}</div>;
+interface BreadcrumbsProps {
+    file: string;
+    relations: BreadcrumbsParents;
+}
+
+function Breadcrumbs({ file, relations }: BreadcrumbsProps) {
+    return <div>{JSON.stringify(relations)}</div>;
 }
 
 export default class MyPlugin extends Plugin {
     settings: MyPluginSettings;
     leafsWithBreadcrumbs: { view: MarkdownView; root: Root }[];
+    parentChildCache: ParentChildCache;
+
+    createLeaf = (leaf: WorkspaceLeaf) => {
+        const rootEl = leaf.view.containerEl.querySelector(
+            ".simple-hierarchy-breadcrumbs"
+        );
+        if (leaf.view instanceof MarkdownView) {
+            if (!rootEl) {
+                const parent = leaf.view.containerEl.querySelector(
+                    "div.cm-contentContainer"
+                );
+
+                const newElement = document.createElement("div");
+                newElement.className = "simple-hierarchy-breadcrumbs";
+
+                parent.firstChild?.before(newElement);
+                const root = createRoot(newElement);
+
+                this.leafsWithBreadcrumbs.push({ view: leaf.view, root });
+            } else if (
+                rootEl &&
+                !_.find(this.leafsWithBreadcrumbs, { view: leaf.view })
+            ) {
+                const root = createRoot(rootEl);
+                this.leafsWithBreadcrumbs.push({ view: leaf.view, root });
+            }
+            this.refreshAllLeafs();
+        }
+    };
+
+    refreshAllLeafs = () => {
+        this.leafsWithBreadcrumbs.forEach(({ view, root }) =>
+            // TODO: check case of the same names in different folders
+            root.render(
+                <Breadcrumbs
+                    file={view.file.basename}
+                    relations={getAllParents(
+                        view.file.basename,
+                        this.parentChildCache
+                    )}
+                />
+            )
+        );
+    };
+
+    refreshCache = () => {
+        _.map(app.metadataCache.resolvedLinks, (_links, path: string) =>
+            refreshCacheForFile(app, path, this.parentChildCache)
+        );
+    };
 
     async onload() {
         await this.loadSettings();
         this.leafsWithBreadcrumbs = [];
-        const parentChildCache = {};
+        this.parentChildCache = {};
         const app = this.app;
-        buildTreeCache(app, parentChildCache);
+        this.refreshCache();
 
-        console.log(">>>>", parentChildCache);
-
-        let counter = 0;
-
-        const refreshAllLeafs = () => {
-            this.leafsWithBreadcrumbs.forEach(({ view, root }) =>
-                // TODO: check case of the same names in different folders
-                root.render(
-                    <Breadcrumbs
-                        file={view.file.basename}
-                        relations={parentChildCache}
-                        counter={counter++}
-                    />
-                )
-            );
-        };
-
-        app.workspace.on("active-leaf-change", (leaf) => {
-            const rootEl = leaf.view.containerEl.querySelector(
-                ".simple-hierarchy-breadcrumbs"
-            );
-            if (leaf.view instanceof MarkdownView) {
-                if (!rootEl) {
-                    const parent = leaf.view.containerEl.querySelector(
-                        "div.cm-contentContainer"
-                    );
-
-                    const newElement = document.createElement("div");
-                    newElement.className = "simple-hierarchy-breadcrumbs";
-
-                    parent.firstChild?.before(newElement);
-                    const root = createRoot(newElement);
-
-                    this.leafsWithBreadcrumbs.push({ view: leaf.view, root });
-                } else if (
-                    rootEl &&
-                    !_.find(this.leafsWithBreadcrumbs, { view: leaf.view })
-                ) {
-                    const root = createRoot(rootEl);
-                    this.leafsWithBreadcrumbs.push({ view: leaf.view, root });
-                }
-                refreshAllLeafs();
-            }
-        });
-
-        app.workspace.on("file-open", (file) => {
-            console.log("file opened", file.path);
-        });
-
-        app.workspace.on("editor-change", () => {
-            buildTreeCache(app, parentChildCache);
-        });
+        app.workspace.on("active-leaf-change", this.createLeaf.bind(this));
+        app.workspace.on("editor-change", this.refreshCache);
     }
 
     onunload() {
-        app.workspace.off("file-open");
-        app.workspace.off("active-leaf-change");
-        app.workspace.off("editor-change");
+        app.workspace.off("active-leaf-change", this.createLeaf);
+        app.workspace.off("editor-change", this.refreshCache);
         this.leafsWithBreadcrumbs.forEach(({ root }) => root.unmount());
     }
 
