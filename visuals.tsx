@@ -10,8 +10,8 @@ export type Breadcrumbs = string[];
 export function SimplePath({ relations }: BreadcrumbsProps) {
     return (
         <div>
-            {relations.map((path) => (
-                <div> {path.join(" -> ")}</div>
+            {relations.map((path, i) => (
+                <div key={i}> {path.join(" -> ")}</div>
             ))}
         </div>
     );

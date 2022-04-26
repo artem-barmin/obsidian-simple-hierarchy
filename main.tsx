@@ -54,30 +54,42 @@ function refreshCacheForFile(
     );
     if (mocTags.length) {
         // find list item that have #moc tag
-        const itemsWithMoc: ListItemCache[] = mocTags.map((tagLine: number) => {
-            return meta.listItems.find(_.partial(findSection, tagLine));
-        });
-
-        // find all nested list items
-        const allNestedItemsOfMoc = itemsWithMoc.map((item) => ({
-            item,
-            nested: getAllChildrensOfBlock([item], meta.listItems),
-        }));
-
-        // find all links that belongs to #moc branch
-        const allLinks = allNestedItemsOfMoc.map(({ item, nested }) => {
-            const links = meta.links.filter((link) =>
-                nested.find(_.partial(findSection, link.position.start.line))
-            );
-            return { item, links };
-        });
-
-        // TODO: get "item" text and use as category
-        // add them to "parent->child" relation
-        parentChildCache[rootFile.basename] = _.map(
-            _.flatMap(allLinks, "links"),
-            "link"
+        const itemsWithMoc: ListItemCache[] = _.compact(
+            mocTags.map((tagLine: number) => {
+                return meta.listItems.find(_.partial(findSection, tagLine));
+            })
         );
+
+        if (itemsWithMoc.length) {
+            // it's a list level moc
+            // find all nested list items
+            const allNestedItemsOfMoc = itemsWithMoc.map((item) => ({
+                item,
+                nested: getAllChildrensOfBlock([item], meta.listItems),
+            }));
+
+            // find all links that belongs to #moc branch
+            const allLinks = allNestedItemsOfMoc.map(({ item, nested }) => {
+                const links = meta.links.filter((link) =>
+                    nested.find(
+                        _.partial(findSection, link.position.start.line)
+                    )
+                );
+                return { item, links };
+            });
+
+            // TODO: get "item" text and use as category
+            // add them to "parent->child" relation
+            parentChildCache[rootFile.basename] = _.map(
+                _.flatMap(allLinks, "links"),
+                "link"
+            );
+        } else {
+            // it's a file level #moc
+            parentChildCache[rootFile.basename] = _.map(meta.links, "link");
+        }
+    } else {
+        delete parentChildCache[rootFile.basename];
     }
 }
 
@@ -126,27 +138,31 @@ export default class MyPlugin extends Plugin {
 
                 const cmGutter = container.querySelector("div.cm-gutters");
                 const correctHeight = () => {
-                    cmGutter.style.paddingTop = `${newElement.offsetHeight}px`;
+                    if (newElement.offsetHeight > 0)
+                        cmGutter.style.paddingTop = `${newElement.offsetHeight}px`;
                 };
                 new ResizeObserver(correctHeight).observe(newElement);
-                new MutationObserver(correctHeight).observe(cmGutter, {
-                    attributes: true,
-                    attributeFilter: ["style"],
-                });
 
-                this.leafsWithBreadcrumbs.push({ view: leaf.view, root });
+                this.leafsWithBreadcrumbs.push({
+                    view: leaf.view,
+                    root,
+                });
             }
-            this.refreshAllLeafs();
         }
     };
 
     createAllLeafs = () => {
         const leafs = this.app.workspace.getLeavesOfType("markdown");
         leafs.forEach(this.createLeaf);
+        this.refreshAllLeafs();
     };
 
     refreshAllLeafs = () => {
-        this.leafsWithBreadcrumbs.forEach(({ view, root }) =>
+        this.leafsWithBreadcrumbs.forEach(({ view, root }) => {
+            console.log(
+                view.file.basename,
+                getAllParents(view.file.basename, this.parentChildCache)
+            );
             // TODO: check case of the same names in different folders
             root.render(
                 <Visuals.SimplePath
@@ -156,14 +172,15 @@ export default class MyPlugin extends Plugin {
                         this.parentChildCache
                     )}
                 />
-            )
-        );
+            );
+        });
     };
 
     refreshCache = () => {
         _.map(app.metadataCache.resolvedLinks, (_links, path: string) =>
             refreshCacheForFile(app, path, this.parentChildCache)
         );
+        console.log("Refresh cache", this.parentChildCache);
         this.refreshAllLeafs();
     };
 
@@ -173,6 +190,7 @@ export default class MyPlugin extends Plugin {
         this.parentChildCache = {};
         const app = this.app;
 
+        app.workspace.on("active-leaf-change", this.createAllLeafs);
         app.workspace.on("file-open", this.createAllLeafs);
         app.workspace.on("editor-change", this.refreshCache);
 
@@ -181,6 +199,7 @@ export default class MyPlugin extends Plugin {
     }
 
     onunload() {
+        app.workspace.off("active-leaf-change", this.createAllLeafs);
         app.workspace.off("file-open", this.createAllLeafs);
         app.workspace.off("editor-change", this.refreshCache);
         this.leafsWithBreadcrumbs.forEach(({ root }) => root.unmount());
