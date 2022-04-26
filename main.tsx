@@ -125,9 +125,14 @@ export default class MyPlugin extends Plugin {
                 const root = createRoot(newElement);
 
                 const cmGutter = container.querySelector("div.cm-gutters");
-                new ResizeObserver(() => {
+                const correctHeight = () => {
                     cmGutter.style.paddingTop = `${newElement.offsetHeight}px`;
-                }).observe(newElement);
+                };
+                new ResizeObserver(correctHeight).observe(newElement);
+                new MutationObserver(correctHeight).observe(cmGutter, {
+                    attributes: true,
+                    attributeFilter: ["style"],
+                });
 
                 this.leafsWithBreadcrumbs.push({ view: leaf.view, root });
             }
@@ -167,11 +172,11 @@ export default class MyPlugin extends Plugin {
         this.leafsWithBreadcrumbs = [];
         this.parentChildCache = {};
         const app = this.app;
-        this.refreshCache();
 
         app.workspace.on("file-open", this.createAllLeafs);
         app.workspace.on("editor-change", this.refreshCache);
 
+        this.refreshCache();
         this.createAllLeafs();
     }
 
