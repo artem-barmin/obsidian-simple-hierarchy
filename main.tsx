@@ -3,8 +3,6 @@ import {
     ListItemCache,
     MarkdownView,
     Plugin,
-    PluginSettingTab,
-    Setting,
     TagCache,
     TFile,
     WorkspaceLeaf,
@@ -12,6 +10,7 @@ import {
 import _ from "lodash";
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
+import * as Visuals from "./visuals";
 
 interface MyPluginSettings {
     mySetting: string;
@@ -86,29 +85,21 @@ interface ParentChildCache {
     [key: string]: string[];
 }
 
-type Breadcrumbs = string[];
-
 function getAllParents(
     path: string,
     relations: ParentChildCache
-): Breadcrumbs[] {
+): Visuals.Breadcrumbs[] {
     const getParentsForCurrentPath = (path: string) =>
         _.keys(_.pickBy(relations, (child) => _.includes(child, path)));
-    const allParents = (path: string, currentPath: string[]): Breadcrumbs[] => {
+    const allParents = (
+        path: string,
+        currentPath: string[]
+    ): Visuals.Breadcrumbs[] => {
         const parents = getParentsForCurrentPath(path);
         if (!parents.length) return [currentPath];
         return _.flatMap(parents, (p) => allParents(p, [p, ...currentPath]));
     };
     return allParents(path, [path]);
-}
-
-interface BreadcrumbsProps {
-    file: string;
-    relations: Breadcrumbs[];
-}
-
-function Breadcrumbs({ file, relations }: BreadcrumbsProps) {
-    return <div>Test123:{JSON.stringify(relations)}</div>;
 }
 
 export default class MyPlugin extends Plugin {
@@ -144,11 +135,16 @@ export default class MyPlugin extends Plugin {
         }
     };
 
+    createAllLeafs = () => {
+        const leafs = this.app.workspace.getLeavesOfType("markdown");
+        leafs.forEach(this.createLeaf);
+    };
+
     refreshAllLeafs = () => {
         this.leafsWithBreadcrumbs.forEach(({ view, root }) =>
             // TODO: check case of the same names in different folders
             root.render(
-                <Breadcrumbs
+                <Visuals.SimplePath
                     file={view.file.basename}
                     relations={getAllParents(
                         view.file.basename,
@@ -173,12 +169,14 @@ export default class MyPlugin extends Plugin {
         const app = this.app;
         this.refreshCache();
 
-        app.workspace.on("active-leaf-change", this.createLeaf);
+        app.workspace.on("file-open", this.createAllLeafs);
         app.workspace.on("editor-change", this.refreshCache);
+
+        this.createAllLeafs();
     }
 
     onunload() {
-        app.workspace.off("active-leaf-change", this.createLeaf);
+        app.workspace.off("file-open", this.createAllLeafs);
         app.workspace.off("editor-change", this.refreshCache);
         this.leafsWithBreadcrumbs.forEach(({ root }) => root.unmount());
         document
@@ -197,36 +195,5 @@ export default class MyPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
-    }
-}
-
-class SampleSettingTab extends PluginSettingTab {
-    plugin: MyPlugin;
-
-    constructor(app: App, plugin: MyPlugin) {
-        super(app, plugin);
-        this.plugin = plugin;
-    }
-
-    display(): void {
-        const { containerEl } = this;
-
-        containerEl.empty();
-
-        containerEl.createEl("h2", { text: "Settings for my awesome plugin." });
-
-        new Setting(containerEl)
-            .setName("Setting #1")
-            .setDesc("It's a secret")
-            .addText((text) =>
-                text
-                    .setPlaceholder("Enter your secret")
-                    .setValue(this.plugin.settings.mySetting)
-                    .onChange(async (value) => {
-                        console.log("Secret: " + value);
-                        this.plugin.settings.mySetting = value;
-                        await this.plugin.saveSettings();
-                    })
-            );
     }
 }
