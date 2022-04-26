@@ -86,36 +86,29 @@ interface ParentChildCache {
     [key: string]: string[];
 }
 
-interface BreadcrumbsParents {
-    level: number;
-    parents: string[];
-    path: string;
-}
+type Breadcrumbs = string[];
 
 function getAllParents(
     path: string,
     relations: ParentChildCache
-): BreadcrumbsParents[] {
-    const getParent = (path: string) =>
+): Breadcrumbs[] {
+    const getParentsForCurrentPath = (path: string) =>
         _.keys(_.pickBy(relations, (child) => _.includes(child, path)));
-    const allParents = (level: number, path: string): BreadcrumbsParents[] => {
-        const parents = getParent(path);
-        if (!parents.length) return [];
-        return [
-            { level, parents, path },
-            ..._.flatMap(parents, _.partial(allParents, level + 1)),
-        ];
+    const allParents = (path: string, currentPath: string[]): Breadcrumbs[] => {
+        const parents = getParentsForCurrentPath(path);
+        if (!parents.length) return [currentPath];
+        return _.flatMap(parents, (p) => allParents(p, [p, ...currentPath]));
     };
-    return allParents(0, path);
+    return allParents(path, [path]);
 }
 
 interface BreadcrumbsProps {
     file: string;
-    relations: BreadcrumbsParents;
+    relations: Breadcrumbs[];
 }
 
 function Breadcrumbs({ file, relations }: BreadcrumbsProps) {
-    return <div>{JSON.stringify(relations)}</div>;
+    return <div>Test123:{JSON.stringify(relations)}</div>;
 }
 
 export default class MyPlugin extends Plugin {
@@ -124,12 +117,13 @@ export default class MyPlugin extends Plugin {
     parentChildCache: ParentChildCache;
 
     createLeaf = (leaf: WorkspaceLeaf) => {
-        const rootEl = leaf.view.containerEl.querySelector(
-            ".simple-hierarchy-breadcrumbs"
-        );
         if (leaf.view instanceof MarkdownView) {
+            const rootEl = leaf.view.containerEl.querySelector(
+                ".simple-hierarchy-breadcrumbs"
+            );
             if (!rootEl) {
-                const parent = leaf.view.containerEl.querySelector(
+                const container = leaf.view.containerEl;
+                const parent = container.querySelector(
                     "div.cm-contentContainer"
                 );
 
@@ -139,12 +133,11 @@ export default class MyPlugin extends Plugin {
                 parent.firstChild?.before(newElement);
                 const root = createRoot(newElement);
 
-                this.leafsWithBreadcrumbs.push({ view: leaf.view, root });
-            } else if (
-                rootEl &&
-                !_.find(this.leafsWithBreadcrumbs, { view: leaf.view })
-            ) {
-                const root = createRoot(rootEl);
+                const cmGutter = container.querySelector("div.cm-gutters");
+                new ResizeObserver(() => {
+                    cmGutter.style.paddingTop = `${newElement.offsetHeight}px`;
+                }).observe(newElement);
+
                 this.leafsWithBreadcrumbs.push({ view: leaf.view, root });
             }
             this.refreshAllLeafs();
@@ -170,6 +163,7 @@ export default class MyPlugin extends Plugin {
         _.map(app.metadataCache.resolvedLinks, (_links, path: string) =>
             refreshCacheForFile(app, path, this.parentChildCache)
         );
+        this.refreshAllLeafs();
     };
 
     async onload() {
@@ -179,7 +173,7 @@ export default class MyPlugin extends Plugin {
         const app = this.app;
         this.refreshCache();
 
-        app.workspace.on("active-leaf-change", this.createLeaf.bind(this));
+        app.workspace.on("active-leaf-change", this.createLeaf);
         app.workspace.on("editor-change", this.refreshCache);
     }
 
@@ -187,6 +181,10 @@ export default class MyPlugin extends Plugin {
         app.workspace.off("active-leaf-change", this.createLeaf);
         app.workspace.off("editor-change", this.refreshCache);
         this.leafsWithBreadcrumbs.forEach(({ root }) => root.unmount());
+        document
+            .querySelectorAll(".simple-hierarchy-breadcrumbs")
+            .forEach((e) => e.remove());
+        this.leafsWithBreadcrumbs = [];
     }
 
     async loadSettings() {
