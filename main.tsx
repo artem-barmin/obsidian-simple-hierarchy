@@ -56,10 +56,11 @@ function refreshCacheForFile(
         // find list item that have #moc tag
         const itemsWithMoc: ListItemCache[] = _.compact(
             mocTags.map((tagLine: number) => {
-                return meta.listItems.find(_.partial(findSection, tagLine));
+                return meta.listItems?.find(_.partial(findSection, tagLine));
             })
         );
 
+        // TODO: section level moc
         if (itemsWithMoc.length) {
             // it's a list level moc
             // find all nested list items
@@ -111,7 +112,9 @@ function getAllParents(
         if (!parents.length) return [currentPath];
         return _.flatMap(parents, (p) => allParents(p, [p, ...currentPath]));
     };
-    return allParents(path, [path]);
+    const allPaths = allParents(path, []);
+    const orderKeys = _.range(0, _.max(allPaths, "length"));
+    return _.sortBy(allPaths, orderKeys);
 }
 
 export default class MyPlugin extends Plugin {
@@ -159,13 +162,9 @@ export default class MyPlugin extends Plugin {
 
     refreshAllLeafs = () => {
         this.leafsWithBreadcrumbs.forEach(({ view, root }) => {
-            console.log(
-                view.file.basename,
-                getAllParents(view.file.basename, this.parentChildCache)
-            );
             // TODO: check case of the same names in different folders
             root.render(
-                <Visuals.SimplePath
+                <Visuals.Matrix
                     file={view.file.basename}
                     relations={getAllParents(
                         view.file.basename,
@@ -180,7 +179,6 @@ export default class MyPlugin extends Plugin {
         _.map(app.metadataCache.resolvedLinks, (_links, path: string) =>
             refreshCacheForFile(app, path, this.parentChildCache)
         );
-        console.log("Refresh cache", this.parentChildCache);
         this.refreshAllLeafs();
     };
 
@@ -190,18 +188,19 @@ export default class MyPlugin extends Plugin {
         this.parentChildCache = {};
         const app = this.app;
 
+        app.metadataCache.on("changed", this.refreshCache);
+        app.metadataCache.on("resolve", this.refreshCache);
         app.workspace.on("active-leaf-change", this.createAllLeafs);
         app.workspace.on("file-open", this.createAllLeafs);
-        app.workspace.on("editor-change", this.refreshCache);
 
         this.refreshCache();
         this.createAllLeafs();
     }
 
     onunload() {
+        app.metadataCache.off("changed", this.refreshCache);
         app.workspace.off("active-leaf-change", this.createAllLeafs);
         app.workspace.off("file-open", this.createAllLeafs);
-        app.workspace.off("editor-change", this.refreshCache);
         this.leafsWithBreadcrumbs.forEach(({ root }) => root.unmount());
         document
             .querySelectorAll(".simple-hierarchy-breadcrumbs")

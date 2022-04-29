@@ -4,6 +4,7 @@
 2. As many defaults as possible
 3. Less than 500 lines of code
 4. "Install and use" approach
+5. Rich multi-hierarchy visulatisations(treemaps, etc)
 
 # Ideas
 
