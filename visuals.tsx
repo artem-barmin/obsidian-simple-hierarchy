@@ -4,21 +4,12 @@ import _ from "lodash";
 interface BreadcrumbsProps {
     file: string;
     relations: Breadcrumbs[];
+    drawLink: (link: string) => JSX.Element;
 }
 
 export type Breadcrumbs = string[];
 
-export function SimplePath({ relations }: BreadcrumbsProps) {
-    return (
-        <div>
-            {relations.map((path, i) => (
-                <div key={i}> {path.join(" -> ")}</div>
-            ))}
-        </div>
-    );
-}
-
-export function Matrix({ relations }: BreadcrumbsProps) {
+function prepareDataForMatrixView(relations: Breadcrumbs[]) {
     const rows = relations.length;
     const cols = _.maxBy(relations, (path) => path.length)?.length || 0;
 
@@ -37,6 +28,21 @@ export function Matrix({ relations }: BreadcrumbsProps) {
         })
     );
 
+    return { rows, cols, transformed };
+}
+
+export function SimplePath({ relations }: BreadcrumbsProps) {
+    return (
+        <div>
+            {relations.map((path, i) => (
+                <div key={i}> {path.join(" -> ")}</div>
+            ))}
+        </div>
+    );
+}
+
+export function Matrix({ relations, drawLink }: BreadcrumbsProps) {
+    const { rows, cols, transformed } = prepareDataForMatrixView(relations);
     const style = {
         border: "1px solid black",
         borderCollapse: "collapse",
@@ -57,7 +63,7 @@ export function Matrix({ relations }: BreadcrumbsProps) {
                                         rowSpan={cell.rowspan}
                                         key={`cell:${row}:${col}`}
                                     >
-                                        {cell.value}
+                                        {drawLink(cell.value)}
                                     </td>
                                 );
                         })}
