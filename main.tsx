@@ -11,6 +11,7 @@ import _ from "lodash";
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import * as Visuals from "./visuals";
+import { hoverPreview, openOrSwitch } from "obsidian-community-lib";
 
 interface MyPluginSettings {
     mySetting: string;
@@ -23,6 +24,27 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
 function findSection(line: number, section: ListItemCache) {
     return (
         section.position.start.line <= line && section.position.end.line >= line
+    );
+}
+
+function drawLink(view, target) {
+    return (
+        <span
+            className="cm-hmd-internal-link"
+            onClick={async (e) => await openOrSwitch(target, e)}
+            onMouseOver={(e) => hoverPreview(e, view, target)}
+        >
+            <span
+                className="data-link-text"
+                data-link-tags=""
+                data-link-data-href={target}
+                data-link-path={target}
+            >
+                <span className="cm-underline">
+                    <span>{target}</span>
+                </span>
+            </span>
+        </span>
     );
 }
 
@@ -60,6 +82,11 @@ function refreshCacheForFile(
             })
         );
 
+        const fileLinksAndEmbeds = _.concat(
+            meta.links || [],
+            meta.embeds || []
+        );
+
         // TODO: section level moc
         if (itemsWithMoc.length) {
             // it's a list level moc
@@ -71,7 +98,7 @@ function refreshCacheForFile(
 
             // find all links that belongs to #moc branch
             const allLinks = allNestedItemsOfMoc.map(({ item, nested }) => {
-                const links = meta.links.filter((link) =>
+                const links = fileLinksAndEmbeds.filter((link) =>
                     nested.find(
                         _.partial(findSection, link.position.start.line)
                     )
@@ -87,7 +114,10 @@ function refreshCacheForFile(
             );
         } else {
             // it's a file level #moc
-            parentChildCache[rootFile.basename] = _.map(meta.links, "link");
+            parentChildCache[rootFile.basename] = _.map(
+                fileLinksAndEmbeds,
+                "link"
+            );
         }
     } else {
         delete parentChildCache[rootFile.basename];
@@ -166,6 +196,7 @@ export default class MyPlugin extends Plugin {
             if (view.file)
                 root.render(
                     <Visuals.Matrix
+                        drawLink={(link) => drawLink(view, link)}
                         file={view.file.basename}
                         relations={getAllParents(
                             view.file.basename,
