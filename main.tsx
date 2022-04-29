@@ -163,15 +163,16 @@ export default class MyPlugin extends Plugin {
     refreshAllLeafs = () => {
         this.leafsWithBreadcrumbs.forEach(({ view, root }) => {
             // TODO: check case of the same names in different folders
-            root.render(
-                <Visuals.Matrix
-                    file={view.file.basename}
-                    relations={getAllParents(
-                        view.file.basename,
-                        this.parentChildCache
-                    )}
-                />
-            );
+            if (view.file)
+                root.render(
+                    <Visuals.Matrix
+                        file={view.file.basename}
+                        relations={getAllParents(
+                            view.file.basename,
+                            this.parentChildCache
+                        )}
+                    />
+                );
         });
     };
 

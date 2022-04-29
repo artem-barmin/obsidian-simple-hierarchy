@@ -44,20 +44,26 @@ export function Matrix({ relations }: BreadcrumbsProps) {
 
     return (
         <table style={{ ...style, width: "100%" }}>
-            {_.times(rows, (row) => (
-                <tr>
-                    {_.times(cols, (col) => {
-                        const cell = transformed[row][col];
-                        if (!cell) return null;
-                        if (cell.rowNum == row)
-                            return (
-                                <td style={style} rowSpan={cell.rowspan}>
-                                    {cell.value}
-                                </td>
-                            );
-                    })}
-                </tr>
-            ))}
+            <tbody>
+                {_.times(rows, (row) => (
+                    <tr key={`row:${row}`}>
+                        {_.times(cols, (col) => {
+                            const cell = transformed[row][col];
+                            if (!cell) return null;
+                            if (cell.rowNum == row)
+                                return (
+                                    <td
+                                        style={style}
+                                        rowSpan={cell.rowspan}
+                                        key={`cell:${row}:${col}`}
+                                    >
+                                        {cell.value}
+                                    </td>
+                                );
+                        })}
+                    </tr>
+                ))}
+            </tbody>
         </table>
     );
 }
