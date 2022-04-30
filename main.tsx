@@ -142,26 +142,27 @@ function getAllParents(
         if (!parents.length) return [currentPath];
         return _.flatMap(parents, (p) => allParents(p, [p, ...currentPath]));
     };
-    const allPaths = allParents(path, []);
-    const orderKeys = _.range(0, _.max(allPaths, "length"));
-    return _.sortBy(allPaths, orderKeys);
+    return _.sortBy(allParents(path, [path]));
 }
 
 export default class MyPlugin extends Plugin {
     settings: MyPluginSettings;
-    leafsWithBreadcrumbs: { view: MarkdownView; root: Root }[];
+    leafsWithBreadcrumbs: {
+        view: MarkdownView;
+        root: Root;
+        afterRender: () => void;
+    }[];
     parentChildCache: ParentChildCache;
 
     createLeaf = (leaf: WorkspaceLeaf) => {
         if (leaf.view instanceof MarkdownView) {
+            const view = leaf.view;
             const rootEl = leaf.view.containerEl.querySelector(
                 ".simple-hierarchy-breadcrumbs"
             );
             if (!rootEl) {
-                const container = leaf.view.containerEl;
-                const parent = container.querySelector(
-                    "div.cm-contentContainer"
-                );
+                const container = view.containerEl;
+                const parent = container.querySelector(".cm-contentContainer");
 
                 const newElement = document.createElement("div");
                 newElement.className = "simple-hierarchy-breadcrumbs";
@@ -169,16 +170,23 @@ export default class MyPlugin extends Plugin {
                 parent.firstChild?.before(newElement);
                 const root = createRoot(newElement);
 
-                const cmGutter = container.querySelector("div.cm-gutters");
-                const correctHeight = () => {
-                    if (newElement.offsetHeight > 0)
+                const matchHeight = () => {
+                    const cmGutter = container.querySelector(".cm-gutters");
+                    if (newElement.offsetHeight > 0 && cmGutter)
                         cmGutter.style.paddingTop = `${newElement.offsetHeight}px`;
                 };
-                new ResizeObserver(correctHeight).observe(newElement);
+
+                const refreshCursor = () => {
+                    view.editor.setCursor(view.editor.getCursor());
+                };
 
                 this.leafsWithBreadcrumbs.push({
-                    view: leaf.view,
+                    view,
                     root,
+                    afterRender: () => {
+                        matchHeight();
+                        refreshCursor();
+                    },
                 });
             }
         }
@@ -191,9 +199,9 @@ export default class MyPlugin extends Plugin {
     };
 
     refreshAllLeafs = () => {
-        this.leafsWithBreadcrumbs.forEach(({ view, root }) => {
+        this.leafsWithBreadcrumbs.forEach(({ view, root, afterRender }) => {
             // TODO: check case of the same names in different folders
-            if (view.file)
+            if (view.file) {
                 root.render(
                     <Visuals.Matrix
                         drawLink={(link) => drawLink(view, link)}
@@ -204,6 +212,8 @@ export default class MyPlugin extends Plugin {
                         )}
                     />
                 );
+                requestIdleCallback(afterRender);
+            }
         });
     };
 
