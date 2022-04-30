@@ -6,6 +6,7 @@ import {
     TagCache,
     TFile,
     WorkspaceLeaf,
+    ItemView,
 } from "obsidian";
 import _ from "lodash";
 import * as React from "react";
@@ -62,13 +63,18 @@ function getAllChildrensOfBlock(
     return _.uniq([...parents, ...childrens, ...nestedChildrens]);
 }
 
+function getBasenameByPath(app, path) {
+    const rootFile: TFile = app.vault.getAbstractFileByPath(path) as TFile;
+    return rootFile.basename;
+}
+
 function refreshCacheForFile(
     app: App,
     path: string,
     parentChildCache: ParentChildCache
 ) {
     const meta = app.metadataCache.getCache(path);
-    const rootFile: TFile = app.vault.getAbstractFileByPath(path) as TFile;
+    const basename = getBasenameByPath(app, path);
     const tags = meta.tags || [];
     const mocTags: number[] = _.map(
         _.filter(tags, { tag: "#moc" }),
@@ -108,19 +114,16 @@ function refreshCacheForFile(
 
             // TODO: get "item" text and use as category
             // add them to "parent->child" relation
-            parentChildCache[rootFile.basename] = _.map(
+            parentChildCache[basename] = _.map(
                 _.flatMap(allLinks, "links"),
                 "link"
             );
         } else {
             // it's a file level #moc
-            parentChildCache[rootFile.basename] = _.map(
-                fileLinksAndEmbeds,
-                "link"
-            );
+            parentChildCache[basename] = _.map(fileLinksAndEmbeds, "link");
         }
     } else {
-        delete parentChildCache[rootFile.basename];
+        delete parentChildCache[basename];
     }
 }
 
@@ -143,6 +146,71 @@ function getAllParents(
         return _.flatMap(parents, (p) => allParents(p, [p, ...currentPath]));
     };
     return _.sortBy(allParents(path, [path]));
+}
+
+const NOT_ASSIGNED_VIEW = "NOT_ASSIGNED_VIEW";
+
+function RenderList({ items, view }: { items: string[] }) {
+    return (
+        <div className="markdown-source-view mod-cm6 cm-s-obsidian">
+            <div>
+                <b>Total:</b> {items.length}
+            </div>
+            {items.map((item) => (
+                <div>{drawLink(view, item)}</div>
+            ))}
+        </div>
+    );
+}
+
+export class NotAssignedHierarchyView extends ItemView {
+    root: Root;
+    parentChildCache: ParentChildCache;
+
+    constructor(leaf: WorkspaceLeaf, parentChildCache: ParentChildCache) {
+        super(leaf);
+        this.parentChildCache = parentChildCache;
+    }
+
+    async onload(): Promise<void> {
+        super.onload();
+        this.app.workspace.onLayoutReady(() => {
+            this.root = createRoot(this.contentEl);
+            this.draw();
+        });
+        this.app.metadataCache.on("changed", this.draw);
+        this.app.metadataCache.on("resolve", this.draw);
+    }
+
+    getViewType() {
+        return NOT_ASSIGNED_VIEW;
+    }
+
+    getDisplayText() {
+        return "Non Assigned Hierarchy";
+    }
+
+    draw = () => {
+        const allMentionedItems = _.concat(
+            _.flatten(_.values(this.parentChildCache)),
+            _.keys(this.parentChildCache)
+        );
+
+        const allFiles = _.keys(this.app.metadataCache.resolvedLinks);
+
+        const allFilteredFiles = _.compact(
+            _.map(allFiles, (path) => {
+                const meta = this.app.metadataCache.getCache(path);
+                if (!_.find(meta.tags, { tag: "#daily" }))
+                    return getBasenameByPath(this.app, path);
+            })
+        );
+
+        const notMentioned = _.difference(allFilteredFiles, allMentionedItems);
+        this.root.render(
+            <RenderList view={this.leaf.view} items={notMentioned} />
+        );
+    };
 }
 
 export default class MyPlugin extends Plugin {
@@ -234,6 +302,11 @@ export default class MyPlugin extends Plugin {
         app.metadataCache.on("resolve", this.refreshCache);
         app.workspace.on("active-leaf-change", this.createAllLeafs);
         app.workspace.on("file-open", this.createAllLeafs);
+
+        this.registerView(
+            NOT_ASSIGNED_VIEW,
+            (leaf) => new NotAssignedHierarchyView(leaf, this.parentChildCache)
+        );
 
         this.refreshCache();
         this.createAllLeafs();
