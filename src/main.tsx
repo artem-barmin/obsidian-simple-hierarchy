@@ -68,6 +68,12 @@ function getBasenameByPath(app, path) {
     return rootFile.basename;
 }
 
+function suggestMocsForCurrentFile(current, parentChildCache) {
+    // get all links for "current" file - incoming, outcoming, embeds
+    // check if any direct links we have MOC-related items - get their parent MOCs
+    // sort by amount of "co-related" links
+}
+
 function refreshCacheForFile(
     app: App,
     path: string,
@@ -145,19 +151,19 @@ function getAllParents(
         if (!parents.length) return [currentPath];
         return _.flatMap(parents, (p) => allParents(p, [p, ...currentPath]));
     };
-    return _.sortBy(allParents(path, [path]));
+    return _.sortBy(allParents(path, []));
 }
 
 const NOT_ASSIGNED_VIEW = "NOT_ASSIGNED_VIEW";
 
-function RenderList({ items, view }: { items: string[] }) {
+function RenderList({ items, drawLink }: { items: string[] }) {
     return (
         <div className="markdown-source-view mod-cm6 cm-s-obsidian">
             <div>
                 <b>Total:</b> {items.length}
             </div>
             {items.map((item) => (
-                <div>{drawLink(view, item)}</div>
+                <div>{drawLink(item)}</div>
             ))}
         </div>
     );
@@ -208,7 +214,10 @@ export class NotAssignedHierarchyView extends ItemView {
 
         const notMentioned = _.difference(allFilteredFiles, allMentionedItems);
         this.root.render(
-            <RenderList view={this.leaf.view} items={notMentioned} />
+            <RenderList
+                drawLink={_.partial(drawLink, this.leaf.view)}
+                items={notMentioned}
+            />
         );
     };
 }
