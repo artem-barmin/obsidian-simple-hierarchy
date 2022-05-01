@@ -73,3 +73,7 @@ export function Matrix({ relations, drawLink }: BreadcrumbsProps) {
         </table>
     );
 }
+
+export function Suggestions({ drawLink, suggestions }) {
+    return <div>Suggestions: {JSON.stringify(suggestions)}</div>;
+}

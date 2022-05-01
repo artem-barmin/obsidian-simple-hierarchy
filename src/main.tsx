@@ -68,10 +68,55 @@ function getBasenameByPath(app, path) {
     return rootFile.basename;
 }
 
-function suggestMocsForCurrentFile(current, parentChildCache) {
+function suggestMocsForCurrentFile(
+    app: App,
+    parentChildCache: ParentChildCache,
+    current: TFile
+) {
+    const meta = app.metadataCache.getCache(current.path);
+
     // get all links for "current" file - incoming, outcoming, embeds
+    const incomingLinks = _.map(
+        _.keys(
+            _.pickBy(
+                app.metadataCache.resolvedLinks,
+                (links) => !!links[current.path]
+            )
+        ),
+        _.partial(getBasenameByPath, app)
+    );
+
+    const outgoingLinks = _.map(_.concat(meta.links, meta.embeds), "link");
+
+    const allFileLinks = _.concat(incomingLinks, outgoingLinks);
+
+    // check if any direct link is MOC(but file is not it the section #moc)
+    const allDirectMOCs = _.mapValues(
+        _.pick(parentChildCache, allFileLinks),
+        (_links, moc) => {
+            return { moc, connected: [], score: 1, type: "direct" };
+        }
+    );
+
     // check if any direct links we have MOC-related items - get their parent MOCs
+    const allLinksWithMOCs = _.pickBy(
+        _.mapValues(parentChildCache, (links, moc) => {
+            const connected = _.intersection(links, allFileLinks);
+            return {
+                moc,
+                connected,
+                score: connected.length,
+                type: "step",
+            };
+        }),
+        "score"
+    );
+
     // sort by amount of "co-related" links
+    return _.sortBy(_.values(_.merge(allLinksWithMOCs, allDirectMOCs)), [
+        "type",
+        "score",
+    ]);
 }
 
 function refreshCacheForFile(
@@ -151,7 +196,7 @@ function getAllParents(
         if (!parents.length) return [currentPath];
         return _.flatMap(parents, (p) => allParents(p, [p, ...currentPath]));
     };
-    return _.sortBy(allParents(path, []));
+    return _.filter(_.sortBy(allParents(path, [])), "length");
 }
 
 const NOT_ASSIGNED_VIEW = "NOT_ASSIGNED_VIEW";
@@ -279,16 +324,31 @@ export default class MyPlugin extends Plugin {
         this.leafsWithBreadcrumbs.forEach(({ view, root, afterRender }) => {
             // TODO: check case of the same names in different folders
             if (view.file) {
-                root.render(
-                    <Visuals.Matrix
-                        drawLink={(link) => drawLink(view, link)}
-                        file={view.file.basename}
-                        relations={getAllParents(
-                            view.file.basename,
-                            this.parentChildCache
-                        )}
-                    />
+                const relations = getAllParents(
+                    view.file.basename,
+                    this.parentChildCache
                 );
+                if (relations.length)
+                    root.render(
+                        <Visuals.Matrix
+                            drawLink={(link) => drawLink(view, link)}
+                            file={view.file.basename}
+                            relations={relations}
+                        />
+                    );
+                else {
+                    const suggestions = suggestMocsForCurrentFile(
+                        this.app,
+                        this.parentChildCache,
+                        view.file
+                    );
+                    root.render(
+                        <Visuals.Suggestions
+                            drawLink={(link) => drawLink(view, link)}
+                            suggestions={suggestions}
+                        />
+                    );
+                }
                 requestIdleCallback(afterRender);
             }
         });
