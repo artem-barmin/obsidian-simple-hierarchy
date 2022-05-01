@@ -196,14 +196,24 @@ function getAllParents(
 
 const NOT_ASSIGNED_VIEW = "NOT_ASSIGNED_VIEW";
 
-function RenderList({ items, drawLink }: { items: string[] }) {
+function RenderList({
+    items,
+    drawLink,
+}: {
+    items: { link: string; suggestions: number }[];
+}) {
     return (
         <div className="markdown-source-view mod-cm6 cm-s-obsidian">
             <div>
                 <b>Total:</b> {items.length}
             </div>
-            {items.map((item) => (
-                <div>{drawLink(item)}</div>
+            {items.map(({ link, suggestions }, i) => (
+                <div key={"suggestion" + i}>
+                    {drawLink(link)}
+                    <span className="not-mentioned-suggestion">
+                        {suggestions}
+                    </span>
+                </div>
             ))}
         </div>
     );
@@ -224,8 +234,7 @@ export class NotAssignedHierarchyView extends ItemView {
             this.root = createRoot(this.contentEl);
             this.draw();
         });
-        this.app.metadataCache.on("changed", this.draw);
-        this.app.metadataCache.on("resolve", this.draw);
+        this.app.metadataCache.on("resolved", this.draw);
     }
 
     getViewType() {
@@ -257,10 +266,30 @@ export class NotAssignedHierarchyView extends ItemView {
         );
 
         const notMentioned = _.difference(allFilteredFiles, allMentionedItems);
+        const suggestions = _.fromPairs(
+            notMentioned.map((path) => [
+                path,
+                suggestMocsForCurrentFile(
+                    this.app,
+                    this.parentChildCache,
+                    this.app.metadataCache.getFirstLinkpathDest(path, "")
+                ).length,
+            ])
+        );
+
+        const itemsWithSuggestions = _.orderBy(
+            _.map(notMentioned, (link) => ({
+                link,
+                suggestions: suggestions[link],
+            })),
+            ["suggestions"],
+            ["desc"]
+        );
+
         this.root.render(
             <RenderList
                 drawLink={_.partial(drawLink, this.leaf.view)}
-                items={notMentioned}
+                items={itemsWithSuggestions}
             />
         );
     };
@@ -366,8 +395,7 @@ export default class MyPlugin extends Plugin {
         this.parentChildCache = {};
         const app = this.app;
 
-        app.metadataCache.on("changed", this.refreshCache);
-        app.metadataCache.on("resolve", this.refreshCache);
+        app.metadataCache.on("resolved", this.refreshCache);
         app.workspace.on("active-leaf-change", this.createAllLeafs);
         app.workspace.on("file-open", this.createAllLeafs);
 

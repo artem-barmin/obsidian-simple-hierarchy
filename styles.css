@@ -3,6 +3,13 @@
 	font-size: 10px;
 }
 
+.not-mentioned-suggestion {
+	color: grey;
+	border: 1px solid grey;
+	border-radius: 2px;
+	margin-left: 10px;
+}
+
 .suggestion-connect {
 	font-size: 50%;
 }

@@ -90,11 +90,16 @@ export function Suggestions({ drawLink, suggestions }: SuggestionProps) {
     return (
         <div style={{ border: "1px solid black" }}>
             Possible connections:
-            {suggestions.map(({ moc, connected, score, type }) => (
-                <div>
+            {suggestions.map(({ moc, connected, type }) => (
+                <div key={"suggestion-list" + moc}>
                     {drawLink(moc)}
                     <span className="suggestion-why">
-                        {type}:{connected.join(",")}
+                        {type}:
+                        {connected.map((link) => (
+                            <span key={"suggestion-link-key" + link}>
+                                {drawLink(link)},
+                            </span>
+                        ))}
                     </span>
                     <button className="suggestion-connect">Connect</button>
                 </div>
