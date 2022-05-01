@@ -74,6 +74,31 @@ export function Matrix({ relations, drawLink }: BreadcrumbsProps) {
     );
 }
 
-export function Suggestions({ drawLink, suggestions }) {
-    return <div>Suggestions: {JSON.stringify(suggestions)}</div>;
+interface Suggestion {
+    moc: string;
+    connected: string[];
+    score: number;
+    type: "direct" | "through";
+}
+
+interface SuggestionProps {
+    suggestions: Suggestion[];
+    drawLink: (link: string) => JSX.Element;
+}
+
+export function Suggestions({ drawLink, suggestions }: SuggestionProps) {
+    return (
+        <div style={{ border: "1px solid black" }}>
+            Possible connections:
+            {suggestions.map(({ moc, connected, score, type }) => (
+                <div>
+                    {drawLink(moc)}
+                    <span className="suggestion-why">
+                        {type}:{connected.join(",")}
+                    </span>
+                    <button className="suggestion-connect">Connect</button>
+                </div>
+            ))}
+        </div>
+    );
 }

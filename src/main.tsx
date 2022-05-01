@@ -102,12 +102,7 @@ function suggestMocsForCurrentFile(
     const allLinksWithMOCs = _.pickBy(
         _.mapValues(parentChildCache, (links, moc) => {
             const connected = _.intersection(links, allFileLinks);
-            return {
-                moc,
-                connected,
-                score: connected.length,
-                type: "step",
-            };
+            return { moc, connected, score: connected.length, type: "through" };
         }),
         "score"
     );
@@ -252,7 +247,11 @@ export class NotAssignedHierarchyView extends ItemView {
         const allFilteredFiles = _.compact(
             _.map(allFiles, (path) => {
                 const meta = this.app.metadataCache.getCache(path);
-                if (!_.find(meta.tags, { tag: "#daily" }))
+                if (
+                    !_.find(meta.tags, ({ tag }) =>
+                        _.includes(["#daily", "#blog"], tag)
+                    )
+                )
                     return getBasenameByPath(this.app, path);
             })
         );
