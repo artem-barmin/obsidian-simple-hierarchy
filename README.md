@@ -14,3 +14,8 @@
 2. Detect cycles in graph
 3. Simple metrics that describes current PKM graph https://graphology.github.io/standard-library/metrics
     - centrality
+
+# Settings
+
+-   Tags for MOC defition. Default: #moc
+-   Matrix/breadcrumbs view: left-right VS right-left
