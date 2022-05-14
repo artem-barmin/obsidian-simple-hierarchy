@@ -5,7 +5,7 @@ import { Textfit } from "react-textfit";
 interface BreadcrumbsProps {
     file: string;
     relations: Breadcrumbs[];
-    drawLink: (link: string) => JSX.Element;
+    drawLink: (link: string, id?: string) => JSX.Element;
     direction: MatrixDirection;
 }
 

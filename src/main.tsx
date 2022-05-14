@@ -28,10 +28,11 @@ function findSection(line: number, section: ListItemCache) {
     );
 }
 
-function drawLink(view, target) {
+function drawLink(view, target, id?) {
     return (
         <span
             className="cm-hmd-internal-link"
+            id={id}
             onClick={async (e) => await openOrSwitch(target, e)}
             onMouseOver={(e) => hoverPreview(e, view, target)}
         >
@@ -367,7 +368,7 @@ export default class MyPlugin extends Plugin {
                 if (relations.length)
                     root.render(
                         <Visuals.Matrix
-                            drawLink={(link) => drawLink(view, link)}
+                            drawLink={_.partial(drawLink, view)}
                             file={view.file.basename}
                             relations={relations}
                             direction={"right-left"}
@@ -381,7 +382,7 @@ export default class MyPlugin extends Plugin {
                     );
                     root.render(
                         <Visuals.Suggestions
-                            drawLink={(link) => drawLink(view, link)}
+                            drawLink={_.partial(drawLink, view)}
                             suggestions={suggestions}
                         />
                     );
