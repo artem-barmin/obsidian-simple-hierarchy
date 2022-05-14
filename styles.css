@@ -21,5 +21,11 @@
 .simple-hierarchy-matrix table {
 	background-color: var(--background-color-lt);
 	table-layout: fixed;
+	width: 100%;
 }
 
+.simple-hierarchy-matrix table, .simple-hierarchy-matrix table td {
+	border: none;
+	border-collapse: collapse;
+	text-align: center;
+}

@@ -12,15 +12,17 @@ interface BreadcrumbsProps {
 export type Breadcrumbs = string[];
 
 type MatrixDirection = "right-left" | "left-right";
+type MatrixCell = { value: string; rowspan: number; rowNum: number };
+type Matrix = MatrixCell[][];
 
 function prepareDataForMatrixView(
     direction: MatrixDirection,
     relations: Breadcrumbs[]
-) {
+): { rows: number; cols: number; transformed: Matrix } {
     const rows = relations.length;
     const cols = _.maxBy(relations, (path) => path.length)?.length || 0;
 
-    let transformed;
+    let transformed: Matrix;
 
     if (direction == "left-right")
         transformed = relations.map((row, rowNum) =>
@@ -67,17 +69,9 @@ export function Matrix({
         direction,
         relations
     );
-    const style = {
-        border: "none",
-        borderCollapse: "collapse",
-    };
-
     return (
         <div className="embedded-backlinks simple-hierarchy-matrix">
-            <table
-                style={{ ...style, width: "100%" }}
-                className="backlink-pane"
-            >
+            <table className="backlink-pane">
                 <tbody>
                     {_.times(rows, (row) => (
                         <tr key={`row:${row}`}>
@@ -87,11 +81,7 @@ export function Matrix({
                                 if (!cell) return <td></td>;
                                 if (cell.rowNum == row)
                                     return (
-                                        <td
-                                            style={style}
-                                            rowSpan={cell.rowspan}
-                                            key={key}
-                                        >
+                                        <td rowSpan={cell.rowspan} key={key}>
                                             <div className="search-result-file-match">
                                                 <Textfit
                                                     mode="single"
