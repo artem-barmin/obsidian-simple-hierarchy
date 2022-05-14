@@ -346,7 +346,7 @@ export default class MyPlugin extends Plugin {
 
                 const matchHeight = () => {
                     const cmGutter = container.querySelector(".cm-gutters");
-                    if (newElement.offsetHeight > 0 && cmGutter)
+                    if (newElement.offsetHeight >= 0 && cmGutter)
                         cmGutter.style.paddingTop = `${newElement.offsetHeight}px`;
                 };
 
@@ -379,12 +379,16 @@ export default class MyPlugin extends Plugin {
     refreshAllLeafs = () => {
         this.leafsWithBreadcrumbs.forEach(({ view, root, afterRender }) => {
             // TODO: check case of the same names in different folders
+
             if (view.file) {
                 const relations = getAllParents(
                     view.file.basename,
                     this.parentChildCache
                 );
-                if (relations.length)
+                const meta = app.metadataCache.getFileCache(view.file);
+                if (_.find(meta.tags, { tag: "#root-moc" }))
+                    root.render(<div />);
+                else if (relations.length)
                     root.render(
                         <Visuals.Matrix
                             drawLink={_.partial(drawLink, view)}
