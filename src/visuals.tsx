@@ -1,5 +1,6 @@
 import * as React from "react";
 import _ from "lodash";
+import { Textfit } from "react-textfit";
 
 interface BreadcrumbsProps {
     file: string;
@@ -44,33 +45,45 @@ export function SimplePath({ relations }: BreadcrumbsProps) {
 export function Matrix({ relations, drawLink }: BreadcrumbsProps) {
     const { rows, cols, transformed } = prepareDataForMatrixView(relations);
     const style = {
-        border: "1px solid black",
+        border: "none",
         borderCollapse: "collapse",
     };
 
     return (
-        <table style={{ ...style, width: "100%" }}>
-            <tbody>
-                {_.times(rows, (row) => (
-                    <tr key={`row:${row}`}>
-                        {_.times(cols, (col) => {
-                            const cell = transformed[row][col];
-                            if (!cell) return null;
-                            if (cell.rowNum == row)
-                                return (
-                                    <td
-                                        style={style}
-                                        rowSpan={cell.rowspan}
-                                        key={`cell:${row}:${col}`}
-                                    >
-                                        {drawLink(cell.value)}
-                                    </td>
-                                );
-                        })}
-                    </tr>
-                ))}
-            </tbody>
-        </table>
+        <div className="embedded-backlinks simple-hierarchy-matrix">
+            <table
+                style={{ ...style, width: "100%" }}
+                className="backlink-pane"
+            >
+                <tbody>
+                    {_.times(rows, (row) => (
+                        <tr key={`row:${row}`}>
+                            {_.times(cols, (col) => {
+                                const cell = transformed[row][col];
+                                if (!cell) return null;
+                                if (cell.rowNum == row)
+                                    return (
+                                        <td
+                                            style={style}
+                                            rowSpan={cell.rowspan}
+                                            key={`cell:${row}:${col}`}
+                                        >
+                                            <div className="search-result-file-match">
+                                                <Textfit
+                                                    mode="single"
+                                                    forceSingleModeWidth={false}
+                                                >
+                                                    {drawLink(cell.value)}
+                                                </Textfit>
+                                            </div>
+                                        </td>
+                                    );
+                            })}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 }
 

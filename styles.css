@@ -13,3 +13,13 @@
 .suggestion-connect {
 	font-size: 50%;
 }
+
+.simple-hierarchy-matrix .backlink-pane{
+	margin-top: 0px;
+}
+
+.simple-hierarchy-matrix table {
+	background-color: var(--background-color-lt);
+	table-layout: fixed;
+}
+
