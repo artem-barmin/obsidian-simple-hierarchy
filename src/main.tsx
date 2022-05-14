@@ -107,11 +107,15 @@ function suggestMocsForCurrentFile(
         "score"
     );
 
+    // gather all suggestions and remove current file
+    const suggestedMOCs = _.values(_.merge(allLinksWithMOCs, allDirectMOCs));
+    const suggestedMOCsWithoutCurrent = _.filter(
+        suggestedMOCs,
+        ({ moc }) => moc !== current.basename
+    );
+
     // sort by amount of "co-related" links
-    return _.sortBy(_.values(_.merge(allLinksWithMOCs, allDirectMOCs)), [
-        "type",
-        "score",
-    ]);
+    return _.sortBy(suggestedMOCsWithoutCurrent, ["type", "score"]);
 }
 
 function refreshCacheForFile(
@@ -183,12 +187,15 @@ function getAllParents(
 ): Visuals.Breadcrumbs[] {
     const getParentsForCurrentPath = (path: string) =>
         _.keys(_.pickBy(relations, (child) => _.includes(child, path)));
+    const visited = new Set();
     const allParents = (
         path: string,
         currentPath: string[]
     ): Visuals.Breadcrumbs[] => {
         const parents = getParentsForCurrentPath(path);
+        if (visited.has(path)) return [currentPath];
         if (!parents.length) return [currentPath];
+        visited.add(path);
         return _.flatMap(parents, (p) => allParents(p, [p, ...currentPath]));
     };
     return _.filter(_.sortBy(allParents(path, [])), "length");
