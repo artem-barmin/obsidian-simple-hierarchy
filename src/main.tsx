@@ -370,6 +370,7 @@ export default class MyPlugin extends Plugin {
                             drawLink={(link) => drawLink(view, link)}
                             file={view.file.basename}
                             relations={relations}
+                            direction={"right-left"}
                         />
                     );
                 else {

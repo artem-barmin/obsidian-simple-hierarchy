@@ -6,17 +6,33 @@ interface BreadcrumbsProps {
     file: string;
     relations: Breadcrumbs[];
     drawLink: (link: string) => JSX.Element;
+    direction: MatrixDirection;
 }
 
 export type Breadcrumbs = string[];
 
-function prepareDataForMatrixView(relations: Breadcrumbs[]) {
+type MatrixDirection = "right-left" | "left-right";
+
+function prepareDataForMatrixView(
+    direction: MatrixDirection,
+    relations: Breadcrumbs[]
+) {
     const rows = relations.length;
     const cols = _.maxBy(relations, (path) => path.length)?.length || 0;
 
-    const transformed = relations.map((row, rowNum) =>
-        row.map((value) => ({ value, rowspan: 1, rowNum }))
-    );
+    let transformed;
+
+    if (direction == "left-right")
+        transformed = relations.map((row, rowNum) =>
+            row.map((value) => ({ value, rowspan: 1, rowNum }))
+        );
+    else if (direction == "right-left")
+        transformed = relations.map((row, rowNum) =>
+            _.concat(
+                _.fill(new Array(cols - row.length), null),
+                row.map((value) => ({ value, rowspan: 1, rowNum }))
+            )
+        );
 
     _.times(cols, (col) =>
         _.times(rows, (row) => {
@@ -42,8 +58,15 @@ export function SimplePath({ relations }: BreadcrumbsProps) {
     );
 }
 
-export function Matrix({ relations, drawLink }: BreadcrumbsProps) {
-    const { rows, cols, transformed } = prepareDataForMatrixView(relations);
+export function Matrix({
+    relations,
+    drawLink,
+    direction = "right-left",
+}: BreadcrumbsProps) {
+    const { rows, cols, transformed } = prepareDataForMatrixView(
+        direction,
+        relations
+    );
     const style = {
         border: "none",
         borderCollapse: "collapse",
@@ -60,13 +83,14 @@ export function Matrix({ relations, drawLink }: BreadcrumbsProps) {
                         <tr key={`row:${row}`}>
                             {_.times(cols, (col) => {
                                 const cell = transformed[row][col];
-                                if (!cell) return null;
+                                const key = `cell:${row}:${col}`;
+                                if (!cell) return <td></td>;
                                 if (cell.rowNum == row)
                                     return (
                                         <td
                                             style={style}
                                             rowSpan={cell.rowspan}
-                                            key={`cell:${row}:${col}`}
+                                            key={key}
                                         >
                                             <div className="search-result-file-match">
                                                 <Textfit
