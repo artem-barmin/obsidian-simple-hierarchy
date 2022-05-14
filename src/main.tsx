@@ -28,13 +28,19 @@ function findSection(line: number, section: ListItemCache) {
     );
 }
 
+function linkClick(view, target) {
+    return {
+        onClick: (e) => openOrSwitch(target, e),
+        onMouseOver: (e) => hoverPreview(e, view, target),
+    };
+}
+
 function drawLink(view, target, id?) {
     return (
         <span
             className="cm-hmd-internal-link"
             id={id}
-            onClick={async (e) => await openOrSwitch(target, e)}
-            onMouseOver={(e) => hoverPreview(e, view, target)}
+            {...linkClick(view, target)}
         >
             <span
                 className="data-link-text"
@@ -206,23 +212,32 @@ const NOT_ASSIGNED_VIEW = "NOT_ASSIGNED_VIEW";
 
 function RenderList({
     items,
+    linkClick,
     drawLink,
 }: {
     items: { link: string; suggestions: number }[];
 }) {
     return (
-        <div className="markdown-source-view mod-cm6 cm-s-obsidian">
-            <div>
-                <b>Total:</b> {items.length}
-            </div>
-            {items.map(({ link, suggestions }, i) => (
-                <div key={"suggestion" + i}>
-                    {drawLink(link)}
-                    <span className="not-mentioned-suggestion">
-                        {suggestions}
-                    </span>
+        <div className="embedded-backlinks">
+            <div className="markdown-source-view mod-cm6 cm-s-obsidian backlink-pane">
+                <div>
+                    <b>Total:</b> {items.length}
                 </div>
-            ))}
+                {items.map(({ link, suggestions }, i) => (
+                    <div
+                        key={"suggestion" + i}
+                        className="tree-item-self search-result-file-match"
+                        {...linkClick(link)}
+                    >
+                        <div className="tree-item-inner">{drawLink(link)}</div>
+                        <div className="tree-item-flair-outer">
+                            <span className="tree-item-flair">
+                                {suggestions}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }
@@ -297,6 +312,7 @@ export class NotAssignedHierarchyView extends ItemView {
         this.root.render(
             <RenderList
                 drawLink={_.partial(drawLink, this.leaf.view)}
+                linkClick={_.partial(linkClick, this.leaf.view)}
                 items={itemsWithSuggestions}
             />
         );
@@ -335,7 +351,10 @@ export default class MyPlugin extends Plugin {
                 };
 
                 const refreshCursor = () => {
-                    if (leaf.getViewState().active)
+                    if (
+                        leaf.view ==
+                        this.app.workspace.getActiveViewOfType(MarkdownView)
+                    )
                         view.editor.setCursor(view.editor.getCursor());
                 };
 
@@ -369,6 +388,7 @@ export default class MyPlugin extends Plugin {
                     root.render(
                         <Visuals.Matrix
                             drawLink={_.partial(drawLink, view)}
+                            linkClick={_.partial(linkClick, view)}
                             file={view.file.basename}
                             relations={relations}
                             direction={"right-left"}
@@ -383,11 +403,13 @@ export default class MyPlugin extends Plugin {
                     root.render(
                         <Visuals.Suggestions
                             drawLink={_.partial(drawLink, view)}
+                            linkClick={_.partial(linkClick, view)}
                             suggestions={suggestions}
                         />
                     );
                 }
-                requestIdleCallback(afterRender);
+                requestAnimationFrame(afterRender);
+                setTimeout(afterRender, 100);
             }
         });
     };
