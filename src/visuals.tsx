@@ -63,6 +63,7 @@ export function SimplePath({ relations }: BreadcrumbsProps) {
 export function Matrix({
     relations,
     drawLink,
+    linkClick,
     direction = "right-left",
 }: BreadcrumbsProps) {
     const { rows, cols, transformed } = prepareDataForMatrixView(
@@ -82,7 +83,10 @@ export function Matrix({
                                 if (cell.rowNum == row)
                                     return (
                                         <td rowSpan={cell.rowspan} key={key}>
-                                            <div className="search-result-file-match">
+                                            <div
+                                                className="search-result-file-match"
+                                                {...linkClick(cell.value)}
+                                            >
                                                 <Textfit
                                                     mode="single"
                                                     forceSingleModeWidth={false}
@@ -113,24 +117,42 @@ interface SuggestionProps {
     drawLink: (link: string) => JSX.Element;
 }
 
-export function Suggestions({ drawLink, suggestions }: SuggestionProps) {
+export function Suggestions({
+    drawLink,
+    linkClick,
+    suggestions,
+}: SuggestionProps) {
     return (
-        <div style={{ border: "1px solid black" }}>
-            Possible connections:
-            {suggestions.map(({ moc, connected, type }) => (
-                <div key={"suggestion-list" + moc}>
-                    {drawLink(moc)}
-                    <span className="suggestion-why">
-                        {type}:
-                        {connected.map((link) => (
-                            <span key={"suggestion-link-key" + link}>
-                                {drawLink(link)},
-                            </span>
+        <div className="embedded-backlinks simple-hierarchy-matrix">
+            <div className="backlink-pane">
+                <div className="tree-item search-result">
+                    <div className="tree-item-self search-result-file-title is-clickable">
+                        Possible connections
+                    </div>
+                    <div className="search-result-file-matches">
+                        {suggestions.map(({ moc, connected, type }) => (
+                            <div
+                                key={"suggestion-list" + moc}
+                                className="search-result-file-match"
+                                {...linkClick(moc)}
+                            >
+                                {drawLink(moc)}
+                                <span className="suggestion-why">
+                                    {type}:
+                                    {connected.map((link, i) => (
+                                        <span
+                                            key={"suggestion-link-key" + link}
+                                        >
+                                            {drawLink(link)}
+                                            {i < connected.length - 1 && ","}
+                                        </span>
+                                    ))}
+                                </span>
+                            </div>
                         ))}
-                    </span>
-                    <button className="suggestion-connect">Connect</button>
+                    </div>
                 </div>
-            ))}
+            </div>
         </div>
     );
 }

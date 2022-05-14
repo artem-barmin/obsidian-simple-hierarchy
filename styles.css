@@ -16,6 +16,7 @@
 
 .simple-hierarchy-matrix .backlink-pane{
 	margin-top: 0px;
+	padding: 0px;
 }
 
 .simple-hierarchy-matrix table {
@@ -24,8 +25,21 @@
 	width: 100%;
 }
 
+.simple-hierarchy-matrix .search-result-file-match>div>div {
+	height: 20px;
+}
+
+.simple-hierarchy-matrix .search-result-file-match {
+	line-height: 20px;
+}
+
 .simple-hierarchy-matrix table, .simple-hierarchy-matrix table td {
 	border: none;
 	border-collapse: collapse;
 	text-align: center;
+}
+
+.simple-hierarchy-breadcrumbs .embedded-backlinks {
+	padding: 0px;
+	margin: 0px;
 }
