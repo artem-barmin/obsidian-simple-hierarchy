@@ -327,7 +327,8 @@ export default class MyPlugin extends Plugin {
                 };
 
                 const refreshCursor = () => {
-                    view.editor.setCursor(view.editor.getCursor());
+                    if (leaf.getViewState().active)
+                        view.editor.setCursor(view.editor.getCursor());
                 };
 
                 this.leafsWithBreadcrumbs.push({
