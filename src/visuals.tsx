@@ -105,7 +105,7 @@ export function Matrix({
     );
 }
 
-interface Suggestion {
+export interface Suggestion {
     moc: string;
     connected: string[];
     score: number;

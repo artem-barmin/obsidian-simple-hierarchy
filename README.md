@@ -19,3 +19,5 @@
 
 -   Tags for MOC defition. Default: #moc
 -   Matrix/breadcrumbs view: left-right VS right-left
+-   Tag for skip suggestion block for some files. Default: #root-moc
+-   List length to show in suggestion. Default: 100

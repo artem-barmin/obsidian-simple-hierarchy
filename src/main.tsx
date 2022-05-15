@@ -7,6 +7,11 @@ import {
     TFile,
     WorkspaceLeaf,
     ItemView,
+    FuzzySuggestModal,
+    CacheItem,
+    SectionCache,
+    Loc,
+    View,
 } from "obsidian";
 import _ from "lodash";
 import * as React from "react";
@@ -22,20 +27,26 @@ const DEFAULT_SETTINGS: MyPluginSettings = {
     mySetting: "default",
 };
 
-function findSection(line: number, section: ListItemCache) {
+function findSection(line: number, section: CacheItem) {
     return (
         section.position.start.line <= line && section.position.end.line >= line
     );
 }
 
-function linkClick(view, target) {
+function linkClick(view: ItemView, target: string) {
     return {
-        onClick: (e) => openOrSwitch(target, e),
-        onMouseOver: (e) => hoverPreview(e, view, target),
+        onClick: (e: MouseEvent) => {
+            openOrSwitch(target, e);
+            e.stopPropagation();
+        },
+        onMouseOver: (e: MouseEvent) => {
+            hoverPreview(e, view, target);
+            e.stopPropagation();
+        },
     };
 }
 
-function drawLink(view, target, id?) {
+function drawLink(view: ItemView, target: string, id?: string) {
     return (
         <span
             className="cm-hmd-internal-link"
@@ -70,7 +81,7 @@ function getAllChildrensOfBlock(
     return _.uniq([...parents, ...childrens, ...nestedChildrens]);
 }
 
-function getBasenameByPath(app, path) {
+function getBasenameByPath(app: App, path: string) {
     const rootFile: TFile = app.vault.getAbstractFileByPath(path) as TFile;
     return rootFile.basename;
 }
@@ -79,7 +90,7 @@ function suggestMocsForCurrentFile(
     app: App,
     parentChildCache: ParentChildCache,
     current: TFile
-) {
+): Visuals.Suggestion[] {
     const meta = app.metadataCache.getCache(current.path);
 
     // get all links for "current" file - incoming, outcoming, embeds
@@ -319,6 +330,71 @@ export class NotAssignedHierarchyView extends ItemView {
     };
 }
 
+type MocInFile = { value: string; end: Loc };
+
+async function extractListsForUsageInModal(
+    app: App,
+    file: TFile
+): Promise<MocInFile[]> {
+    const meta = app.metadataCache.getFileCache(file);
+    const mocTags = meta.tags?.filter(({ tag }) => tag === "#moc");
+    if (!mocTags) return [];
+    const itemsWithMoc: SectionCache[] = _.compact(
+        _.flatMap(mocTags, (tag: TagCache) => {
+            return meta.sections?.filter(
+                (section) =>
+                    findSection(tag.position.start.line, section) &&
+                    section.type == "list"
+            );
+        })
+    );
+    const listsToUse = itemsWithMoc.length
+        ? itemsWithMoc
+        : _.filter(meta.sections, { type: "list" });
+    const text = await app.vault.cachedRead(file);
+    const extractTopLevelItems = (list: SectionCache) => {
+        const {
+            position: { start, end },
+        } = list;
+        const listText = text.substring(start.offset, end.offset);
+        return [
+            { value: listText, end: end },
+            ...listText
+                .split("\n")
+                .filter((line) => !line.match(/^[ \t]/))
+                .map((topLevelList) => ({
+                    value: "\t" + topLevelList,
+                    end,
+                })),
+        ];
+    };
+    return _.flatMap(listsToUse, (list) => extractTopLevelItems(list));
+}
+
+class ConnectToMocModal extends FuzzySuggestModal<MocInFile> {
+    items: MocInFile[];
+
+    constructor(app: App, items: MocInFile[]) {
+        super(app);
+        this.items = items;
+    }
+
+    getItems() {
+        return this.items;
+    }
+
+    getItemText(item: MocInFile): string {
+        return _.truncate(item.value, {
+            length: 100,
+            omission: `\n...<list size:${item.value.length}>`,
+        });
+    }
+
+    onChooseItem(item: MocInFile) {
+        console.log("Choose", item);
+    }
+}
+
 export default class MyPlugin extends Plugin {
     settings: MyPluginSettings;
     leafsWithBreadcrumbs: {
@@ -404,10 +480,28 @@ export default class MyPlugin extends Plugin {
                         this.parentChildCache,
                         view.file
                     );
+
+                    const connectOnClick = (moc: string) => ({
+                        onClick: async () => {
+                            const file = app.metadataCache.getFirstLinkpathDest(
+                                moc,
+                                ""
+                            );
+                            const listsToConnect =
+                                await extractListsForUsageInModal(
+                                    this.app,
+                                    file
+                                );
+                            new ConnectToMocModal(
+                                this.app,
+                                listsToConnect
+                            ).open();
+                        },
+                    });
                     root.render(
                         <Visuals.Suggestions
                             drawLink={_.partial(drawLink, view)}
-                            linkClick={_.partial(linkClick, view)}
+                            linkClick={connectOnClick}
                             suggestions={suggestions}
                         />
                     );
