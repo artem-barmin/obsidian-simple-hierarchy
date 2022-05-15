@@ -33,6 +33,8 @@
         "preact": "^10.7.1",
         "react": "^18.0.0",
         "react-dom": "^18.0.0",
-        "react-textfit": "github:artem-barmin/react-textfit"
+        "react-textfit": "github:artem-barmin/react-textfit",
+        "stopwords-ru": "^0.3.0",
+        "tiny-tfidf": "^0.9.1"
     }
 }

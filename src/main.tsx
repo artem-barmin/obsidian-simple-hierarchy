@@ -11,13 +11,14 @@ import {
     CacheItem,
     SectionCache,
     Loc,
-    View,
 } from "obsidian";
 import _ from "lodash";
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import * as Visuals from "./visuals";
 import { hoverPreview, openOrSwitch } from "obsidian-community-lib";
+import { Corpus } from "tiny-tfidf";
+import stopwords from "stopwords-ru";
 
 interface MyPluginSettings {
     mySetting: string;
@@ -519,6 +520,49 @@ export default class MyPlugin extends Plugin {
         this.refreshAllLeafs();
     };
 
+    refreshTfIDFCache = async () => {
+        const cleanUp = (text: string) => text.replace(/^\w+/g, " ");
+
+        const allFiles = _.filter(
+            await Promise.all(
+                _.map(this.app.vault.getFiles(), async (file: TFile) => {
+                    const text = await this.app.vault.cachedRead(file);
+                    const title = file.basename;
+                    return { title, text: cleanUp(title + " " + text) };
+                })
+            ),
+            "text"
+        );
+        this.corpus = new Corpus(
+            _.map(allFiles, "title"),
+            _.map(allFiles, "text"),
+            false,
+            stopwords
+        );
+    };
+
+    suggestFiles = () => {
+        const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
+        const similarDocs = this.corpus.getResultsForQuery(
+            activeLeaf.file.basename +
+                " " +
+                this.app.vault.cachedRead(activeLeaf.file)
+        );
+        const similarDocsWithExplanation = _.map(
+            similarDocs,
+            ([doc, score]) => ({
+                doc,
+                score,
+                explanation: this.corpus.getCommonTerms(
+                    doc,
+                    activeLeaf.file.basename
+                ),
+            })
+        );
+
+        console.log(similarDocsWithExplanation);
+    };
+
     async onload() {
         await this.loadSettings();
         this.leafsWithBreadcrumbs = [];
@@ -529,19 +573,27 @@ export default class MyPlugin extends Plugin {
         app.workspace.on("active-leaf-change", this.createAllLeafs);
         app.workspace.on("file-open", this.createAllLeafs);
 
+        app.metadataCache.on("resolved", this.refreshTfIDFCache);
+        app.workspace.on("active-leaf-change", this.suggestFiles);
+
         this.registerView(
             NOT_ASSIGNED_VIEW,
             (leaf) => new NotAssignedHierarchyView(leaf, this.parentChildCache)
         );
 
         this.refreshCache();
+        this.refreshTfIDFCache();
         this.createAllLeafs();
     }
 
     onunload() {
-        app.metadataCache.off("changed", this.refreshCache);
+        app.metadataCache.off("resolved", this.refreshCache);
         app.workspace.off("active-leaf-change", this.createAllLeafs);
         app.workspace.off("file-open", this.createAllLeafs);
+
+        app.metadataCache.off("resolved", this.refreshTfIDFCache);
+        app.workspace.off("active-leaf-change", this.suggestFiles);
+
         this.leafsWithBreadcrumbs.forEach(({ root }) => root.unmount());
         document
             .querySelectorAll(".simple-hierarchy-breadcrumbs")
