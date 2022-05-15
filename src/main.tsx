@@ -216,7 +216,7 @@ function getAllParents(
         visited.add(path);
         return _.flatMap(parents, (p) => allParents(p, [p, ...currentPath]));
     };
-    return _.filter(_.sortBy(allParents(path, [])), "length");
+    return _.filter(allParents(path, []), "length");
 }
 
 const NOT_ASSIGNED_VIEW = "NOT_ASSIGNED_VIEW";

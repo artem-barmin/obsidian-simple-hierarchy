@@ -24,12 +24,14 @@ function prepareDataForMatrixView(
 
     let transformed: Matrix;
 
+    const reverse = (l) => l.slice().reverse();
+
     if (direction == "left-right")
-        transformed = relations.map((row, rowNum) =>
+        transformed = _.sortBy(relations).map((row, rowNum) =>
             row.map((value) => ({ value, rowspan: 1, rowNum }))
         );
     else if (direction == "right-left")
-        transformed = relations.map((row, rowNum) =>
+        transformed = _.sortBy(relations, reverse).map((row, rowNum) =>
             _.concat(
                 _.fill(new Array(cols - row.length), null),
                 row.map((value) => ({ value, rowspan: 1, rowNum }))
@@ -79,7 +81,7 @@ export function Matrix({
                             {_.times(cols, (col) => {
                                 const cell = transformed[row][col];
                                 const key = `cell:${row}:${col}`;
-                                if (!cell) return <td></td>;
+                                if (!cell) return <td key={key}></td>;
                                 if (cell.rowNum == row)
                                     return (
                                         <td rowSpan={cell.rowspan} key={key}>
