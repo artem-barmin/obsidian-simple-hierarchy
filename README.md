@@ -1,10 +1,11 @@
 # Design principles
 
 1. Convention over configuration
-2. As many defaults as possible
-3. Less than 500 lines of code
-4. "Install and use" approach
-5. Rich multi-hierarchy visulatisations(treemaps, etc)
+2. As many defaults as possible, as less settings as possible
+3. "Install and use" approach
+4. Rich multi-hierarchy visulatisations(treemaps, wiki-style, matrix trees)
+5. Help with Inteligence augumentation mechanisms: automatic graph analysis, etc
+6. Use only Obsidian cache and make it as fast as possible
 
 # Ideas
 
