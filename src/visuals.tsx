@@ -12,7 +12,12 @@ interface BreadcrumbsProps {
 export type Breadcrumbs = string[];
 
 type MatrixDirection = "right-left" | "left-right";
-type MatrixCell = { value: string; rowspan: number; rowNum: number };
+type MatrixCell = {
+    value: string;
+    rowspan: number;
+    rowNum: number;
+    key: string;
+};
 type Matrix = MatrixCell[][];
 
 function prepareDataForMatrixView(
@@ -25,16 +30,21 @@ function prepareDataForMatrixView(
     let transformed: Matrix;
 
     const reverse = (l) => l.slice().reverse();
+    const makeRow = (row, rowNum, padLeft = 0) =>
+        row.map((value, colNum) => ({
+            value,
+            rowspan: 1,
+            rowNum,
+            key: `cell:${rowNum}:${padLeft + colNum}`,
+        }));
 
     if (direction == "left-right")
-        transformed = _.sortBy(relations).map((row, rowNum) =>
-            row.map((value) => ({ value, rowspan: 1, rowNum }))
-        );
+        transformed = _.sortBy(relations).map(makeRow);
     else if (direction == "right-left")
         transformed = _.sortBy(relations, reverse).map((row, rowNum) =>
             _.concat(
                 _.fill(new Array(cols - row.length), null),
-                row.map((value) => ({ value, rowspan: 1, rowNum }))
+                makeRow(row, rowNum, cols - row.length)
             )
         );
 
@@ -73,15 +83,22 @@ export function Matrix({
         relations
     );
     return (
-        <div className="embedded-backlinks simple-hierarchy-matrix">
+        <div
+            className="embedded-backlinks simple-hierarchy-matrix"
+            style={{
+                display: "flex",
+                justifyContent: "space-evenly",
+                width: "100%",
+            }}
+        >
             <table className="backlink-pane">
                 <tbody>
                     {_.times(rows, (row) => (
                         <tr key={`row:${row}`}>
                             {_.times(cols, (col) => {
                                 const cell = transformed[row][col];
-                                const key = `cell:${row}:${col}`;
-                                if (!cell) return <td key={key}></td>;
+                                if (!cell) return <td></td>;
+                                const key = cell.key;
                                 if (cell.rowNum == row)
                                     return (
                                         <td rowSpan={cell.rowspan} key={key}>
@@ -93,7 +110,7 @@ export function Matrix({
                                                     mode="single"
                                                     forceSingleModeWidth={false}
                                                 >
-                                                    {drawLink(cell.value)}
+                                                    {drawLink(key)}
                                                 </Textfit>
                                             </div>
                                         </td>
