@@ -1,6 +1,7 @@
 import * as React from "react";
 import _ from "lodash";
 import { Textfit } from "react-textfit";
+import Xarrow from "react-xarrows";
 
 interface BreadcrumbsProps {
     file: string;
@@ -20,9 +21,14 @@ type MatrixCell = {
 };
 type Matrix = MatrixCell[][];
 
+function key(file, rowNum, colNum) {
+    return `cell:${file}-${rowNum}-${colNum}`;
+}
+
 function prepareDataForMatrixView(
     direction: MatrixDirection,
-    relations: Breadcrumbs[]
+    relations: Breadcrumbs[],
+    file: string
 ): { rows: number; cols: number; transformed: Matrix } {
     const rows = relations.length;
     const cols = _.maxBy(relations, (path) => path.length)?.length || 0;
@@ -35,7 +41,7 @@ function prepareDataForMatrixView(
             value,
             rowspan: 1,
             rowNum,
-            key: `cell:${rowNum}:${padLeft + colNum}`,
+            key: key(file, rowNum, padLeft + colNum),
         }));
 
     if (direction == "left-right")
@@ -72,7 +78,18 @@ export function SimplePath({ relations }: BreadcrumbsProps) {
     );
 }
 
+function computeTableColumnWidths(rows, cols, transformed) {
+    const columnLengths = _.times(cols, (col) =>
+        _.max(_.times(rows, (row) => transformed[row][col]?.value?.length))
+    );
+    const totalWidth = _.sum(columnLengths);
+    return _.map(columnLengths, (length) =>
+        Math.round((100 * length) / totalWidth)
+    );
+}
+
 export function Matrix({
+    file,
     relations,
     drawLink,
     linkClick,
@@ -80,28 +97,43 @@ export function Matrix({
 }: BreadcrumbsProps) {
     const { rows, cols, transformed } = prepareDataForMatrixView(
         direction,
-        relations
+        relations,
+        file
     );
+    const allConnectedPairs = _.uniqWith(
+        _.flatMap(transformed, (row) =>
+            _.map(row, (cell, cellNum) => ({
+                from: cell?.key,
+                to: row[cellNum - 1]?.key,
+            }))
+        ).filter((link) => link.from && link.to),
+        _.isEqual
+    );
+    const columnWidths = computeTableColumnWidths(rows, cols, transformed);
+
     return (
-        <div
-            className="embedded-backlinks simple-hierarchy-matrix"
-            style={{
-                display: "flex",
-                justifyContent: "space-evenly",
-                width: "100%",
-            }}
-        >
+        <div className="embedded-backlinks simple-hierarchy-matrix">
             <table className="backlink-pane">
                 <tbody>
                     {_.times(rows, (row) => (
                         <tr key={`row:${row}`}>
                             {_.times(cols, (col) => {
                                 const cell = transformed[row][col];
-                                if (!cell) return <td></td>;
-                                const key = cell.key;
+                                if (!cell)
+                                    return (
+                                        <td
+                                            key={key(file + ":empty", row, col)}
+                                        ></td>
+                                    );
                                 if (cell.rowNum == row)
                                     return (
-                                        <td rowSpan={cell.rowspan} key={key}>
+                                        <td
+                                            rowSpan={cell.rowspan}
+                                            key={cell.key}
+                                            style={{
+                                                width: columnWidths[col] + "%",
+                                            }}
+                                        >
                                             <div
                                                 className="search-result-file-match"
                                                 {...linkClick(cell.value)}
@@ -110,7 +142,10 @@ export function Matrix({
                                                     mode="single"
                                                     forceSingleModeWidth={false}
                                                 >
-                                                    {drawLink(key)}
+                                                    {drawLink(
+                                                        cell.value,
+                                                        cell.key
+                                                    )}
                                                 </Textfit>
                                             </div>
                                         </td>
@@ -120,6 +155,21 @@ export function Matrix({
                     ))}
                 </tbody>
             </table>
+            {_.map(allConnectedPairs, ({ from, to }) => (
+                <Xarrow
+                    key={from + "/" + to}
+                    start={from}
+                    end={to}
+                    showTail={false}
+                    showHead={false}
+                    startAnchor={"middle"}
+                    endAnchor={"middle"}
+                    path={"grid"}
+                    strokeWidth={1}
+                    gridBreak={"20%"}
+                    zIndex={0}
+                />
+            ))}
         </div>
     );
 }
