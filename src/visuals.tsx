@@ -3,10 +3,16 @@ import _ from "lodash";
 import { Textfit } from "react-textfit";
 import Xarrow from "react-xarrows";
 
+export type LinkClickFn = (link: string) => {
+    onClick: (e: MouseEvent) => void;
+    onMouseOver: (e: MouseEvent) => void;
+};
+
 interface BreadcrumbsProps {
     file: string;
     relations: Breadcrumbs[];
     drawLink: (link: string, id?: string) => JSX.Element;
+    linkClick: LinkClickFn;
     direction: MatrixDirection;
 }
 
@@ -21,7 +27,7 @@ type MatrixCell = {
 };
 type Matrix = MatrixCell[][];
 
-function key(file, rowNum, colNum) {
+function key(file: string, rowNum: number, colNum: number) {
     return `cell:${file}-${rowNum}-${colNum}`;
 }
 
@@ -35,8 +41,8 @@ function prepareDataForMatrixView(
 
     let transformed: Matrix;
 
-    const reverse = (l) => l.slice().reverse();
-    const makeRow = (row, rowNum, padLeft = 0) =>
+    const reverse = (l: Breadcrumbs) => l.slice().reverse();
+    const makeRow = (row: Breadcrumbs, rowNum: number, padLeft: number) =>
         row.map((value, colNum) => ({
             value,
             rowspan: 1,
@@ -45,7 +51,7 @@ function prepareDataForMatrixView(
         }));
 
     if (direction == "left-right")
-        transformed = _.sortBy(relations).map(makeRow);
+        transformed = _.sortBy(relations).map((r, rNum) => makeRow(r, rNum, 0));
     else if (direction == "right-left")
         transformed = _.sortBy(relations, reverse).map((row, rowNum) =>
             _.concat(
@@ -78,7 +84,11 @@ export function SimplePath({ relations }: BreadcrumbsProps) {
     );
 }
 
-function computeTableColumnWidths(rows, cols, transformed) {
+function computeTableColumnWidths(
+    rows: number,
+    cols: number,
+    transformed: Matrix
+) {
     const columnLengths = _.times(cols, (col) =>
         _.max(_.times(rows, (row) => transformed[row][col]?.value?.length))
     );
@@ -184,6 +194,7 @@ export interface Suggestion {
 interface SuggestionProps {
     suggestions: Suggestion[];
     drawLink: (link: string) => JSX.Element;
+    linkClick: LinkClickFn;
 }
 
 export function Suggestions({

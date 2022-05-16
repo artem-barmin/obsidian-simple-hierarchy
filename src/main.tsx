@@ -10,9 +10,8 @@ import {
     FuzzySuggestModal,
     CacheItem,
     SectionCache,
-    Loc,
 } from "obsidian";
-import _, { compact } from "lodash";
+import _ from "lodash";
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import * as Visuals from "./visuals";
@@ -151,7 +150,7 @@ function refreshCacheForFile(
     );
     if (mocTags.length) {
         // find list item that have #moc tag
-        const itemsWithMoc: ListItemCache[] = _.compact(
+        const itemsWithMoc = _.compact(
             mocTags.map((tagLine: number) => {
                 return meta.listItems?.find(_.partial(findSection, tagLine));
             })
@@ -426,7 +425,11 @@ export default class MyPlugin extends Plugin {
 
                 const matchHeight = () => {
                     const cmGutter = container.querySelector(".cm-gutters");
-                    if (newElement.offsetHeight >= 0 && cmGutter)
+                    if (
+                        newElement.offsetHeight >= 0 &&
+                        cmGutter &&
+                        cmGutter instanceof HTMLElement
+                    )
                         cmGutter.style.paddingTop = `${newElement.offsetHeight}px`;
                 };
 
