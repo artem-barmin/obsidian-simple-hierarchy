@@ -14,6 +14,12 @@
 	font-size: 50%;
 }
 
+.simple-hierarchy-matrix {
+	display: flex;
+	justify-content: space-evenly;
+	width: 100%;
+}
+
 .simple-hierarchy-matrix .backlink-pane{
 	margin-top: 0px;
 	padding: 0px;
@@ -21,7 +27,6 @@
 
 .simple-hierarchy-matrix table {
 	background-color: var(--background-color-lt);
-	table-layout: fixed;
 	width: 100%;
 }
 
@@ -31,6 +36,8 @@
 
 .simple-hierarchy-matrix .search-result-file-match {
 	line-height: 20px;
+	padding: 3px;
+	z-index: 1;
 }
 
 .simple-hierarchy-matrix table, .simple-hierarchy-matrix table td {

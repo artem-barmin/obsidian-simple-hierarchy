@@ -34,6 +34,7 @@
         "react": "^18.0.0",
         "react-dom": "^18.0.0",
         "react-textfit": "github:artem-barmin/react-textfit",
+        "react-xarrows": "^2.0.2",
         "stopwords-ru": "^0.3.0",
         "tiny-tfidf": "^0.9.1"
     }
