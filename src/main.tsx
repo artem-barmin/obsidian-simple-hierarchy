@@ -12,12 +12,12 @@ import {
     SectionCache,
     Loc,
 } from "obsidian";
-import _ from "lodash";
+import _, { compact } from "lodash";
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import * as Visuals from "./visuals";
 import { hoverPreview, openOrSwitch } from "obsidian-community-lib";
-import { Corpus } from "tiny-tfidf";
+import { Corpus, Similarity } from "tiny-tfidf";
 import stopwords from "stopwords-ru";
 
 interface MyPluginSettings {
@@ -331,7 +331,7 @@ export class NotAssignedHierarchyView extends ItemView {
     };
 }
 
-type MocInFile = { value: string; end: Loc };
+type MocInFile = { value: string; line: number };
 
 async function extractListsForUsageInModal(
     app: App,
@@ -359,14 +359,17 @@ async function extractListsForUsageInModal(
         } = list;
         const listText = text.substring(start.offset, end.offset);
         return [
-            { value: listText, end: end },
-            ...listText
-                .split("\n")
-                .filter((line) => !line.match(/^[ \t]/))
-                .map((topLevelList) => ({
-                    value: "\t" + topLevelList,
-                    end,
-                })),
+            { value: listText, line: end.line },
+            ..._.compact(
+                listText.split("\n").map((line, i) =>
+                    !line.match(/^[ \t]/)
+                        ? {
+                              value: "\t" + line,
+                              line: start.line + i,
+                          }
+                        : null
+                )
+            ),
         ];
     };
     return _.flatMap(listsToUse, (list) => extractTopLevelItems(list));
@@ -543,6 +546,20 @@ export default class MyPlugin extends Plugin {
 
     suggestFiles = () => {
         const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
+        const activeDocVector = this.corpus.getDocumentVector(
+            activeLeaf.file.basename
+        );
+        const similarities = _.map(
+            this.app.vault.getFiles(),
+            (file: TFile) => ({
+                doc: file.basename,
+                similarity: Similarity.cosineSimilarity(
+                    activeDocVector,
+                    this.corpus.getDocumentVector(file.basename)
+                ),
+            })
+        );
+        console.log(_.take(_.orderBy(similarities, "similarity", "desc"), 10));
         const similarDocs = this.corpus.getResultsForQuery(
             activeLeaf.file.basename +
                 " " +
@@ -559,7 +576,6 @@ export default class MyPlugin extends Plugin {
                 ),
             })
         );
-
         console.log(similarDocsWithExplanation);
     };
 
@@ -573,8 +589,8 @@ export default class MyPlugin extends Plugin {
         app.workspace.on("active-leaf-change", this.createAllLeafs);
         app.workspace.on("file-open", this.createAllLeafs);
 
-        app.metadataCache.on("resolved", this.refreshTfIDFCache);
-        app.workspace.on("active-leaf-change", this.suggestFiles);
+        // app.metadataCache.on("resolved", this.refreshTfIDFCache);
+        // app.workspace.on("active-leaf-change", this.suggestFiles);
 
         this.registerView(
             NOT_ASSIGNED_VIEW,
