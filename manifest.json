@@ -1,10 +1,10 @@
 {
     "id": "obsidian-simple-hierarchy",
-    "name": "Plug'n'Play hierarchy manager",
+    "name": "Dead simple hierarchy manager",
     "version": "1.0.1",
     "minAppVersion": "0.13.0",
-    "description": "Simple and fast plugin for creating multiple custom hierarchies between pages",
-    "author": "Obsidian",
+    "description": "Simple and fast plugin for creating multiple hierarchies and placing pages among them",
+    "author": "Artem Barmin",
     "authorUrl": "https://obsidian.md",
     "isDesktopOnly": false
 }

@@ -377,7 +377,7 @@ async function extractListsForUsageInModal(
 class ConnectToMocModal extends FuzzySuggestModal<MocInFile> {
     items: MocInFile[];
 
-    constructor(app: App, items: MocInFile[]) {
+    constructor(app: App, file: TFile, items: MocInFile[]) {
         super(app);
         this.items = items;
     }
@@ -501,6 +501,7 @@ export default class MyPlugin extends Plugin {
                                 );
                             new ConnectToMocModal(
                                 this.app,
+                                file,
                                 listsToConnect
                             ).open();
                         },
