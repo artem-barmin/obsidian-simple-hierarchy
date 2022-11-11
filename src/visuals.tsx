@@ -1,11 +1,11 @@
 import * as React from "react";
 import _ from "lodash";
-import { Textfit } from "react-textfit";
+// import { Textfit } from "react-textfit";
 import Xarrow from "react-xarrows";
 
 export type LinkClickFn = (link: string) => {
-    onClick: (e: MouseEvent) => void;
-    onMouseOver: (e: MouseEvent) => void;
+    onClick: React.MouseEventHandler<HTMLDivElement>;
+    onMouseOver: React.MouseEventHandler<HTMLDivElement>;
 };
 
 interface BreadcrumbsProps {
@@ -144,20 +144,13 @@ export function Matrix({
                                                 width: columnWidths[col] + "%",
                                             }}
                                         >
-                                            <div
-                                                className="search-result-file-match"
-                                                {...linkClick(cell.value)}
+                                            {drawLink(cell.value, cell.key)}
+                                            {/* <Textfit
+                                                mode="single"
+                                                forceSingleModeWidth={false}
                                             >
-                                                <Textfit
-                                                    mode="single"
-                                                    forceSingleModeWidth={false}
-                                                >
-                                                    {drawLink(
-                                                        cell.value,
-                                                        cell.key
-                                                    )}
-                                                </Textfit>
-                                            </div>
+                                                {drawLink(cell.value, cell.key)}
+                                            </Textfit> */}
                                         </td>
                                     );
                             })}
@@ -188,8 +181,10 @@ export interface Suggestion {
     moc: string;
     connected: string[];
     score: number;
-    type: "direct" | "through";
+    type: SuggestionType;
 }
+
+export type SuggestionType = "direct" | "through";
 
 interface SuggestionProps {
     suggestions: Suggestion[];

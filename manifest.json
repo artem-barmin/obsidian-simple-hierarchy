@@ -2,7 +2,7 @@
     "id": "obsidian-simple-hierarchy",
     "name": "Dead simple hierarchy manager",
     "version": "1.0.1",
-    "minAppVersion": "0.13.0",
+    "minAppVersion": "0.16.0",
     "description": "Simple and fast plugin for creating multiple hierarchies and placing pages among them",
     "author": "Artem Barmin",
     "authorUrl": "https://obsidian.md",

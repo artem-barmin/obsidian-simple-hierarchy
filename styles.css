@@ -50,3 +50,13 @@
 	padding: 0px;
 	margin: 0px;
 }
+
+.simple-hierarchy-breadcrumbs .cm-hmd-internal-link {
+background-color: var(--search-result-background);
+border-radius: var(--radius-s);
+margin: 0;
+color: var(--text-muted);
+box-shadow: 0 0 0 1px var(--background-modifier-border);
+padding: 2px;
+}
+

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
     App,
     ListItemCache,
@@ -16,8 +17,6 @@ import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import * as Visuals from "./visuals";
 import { hoverPreview, openOrSwitch } from "obsidian-community-lib";
-import { Corpus, Similarity } from "tiny-tfidf";
-import stopwords from "stopwords-ru";
 
 interface MyPluginSettings {
     mySetting: string;
@@ -33,7 +32,7 @@ function findSection(line: number, section: CacheItem) {
     );
 }
 
-function linkClick(view: ItemView, target: string) {
+function linkClick(view: ItemView, target: string): Visuals.LinkClickFn {
     return {
         onClick: (e: MouseEvent) => {
             openOrSwitch(target, e);
@@ -49,7 +48,7 @@ function linkClick(view: ItemView, target: string) {
 function drawLink(view: ItemView, target: string, id?: string) {
     return (
         <span
-            className="cm-hmd-internal-link"
+            className="cm-hmd-internal-link search-result-file-match"
             id={id}
             {...linkClick(view, target)}
         >
@@ -112,7 +111,12 @@ function suggestMocsForCurrentFile(
     const allDirectMOCs = _.mapValues(
         _.pick(parentChildCache, allFileLinks),
         (_links, moc) => {
-            return { moc, connected: [], score: 1, type: "direct" };
+            return {
+                moc,
+                connected: [] as string[],
+                score: 1,
+                type: "direct" as Visuals.SuggestionType,
+            };
         }
     );
 
@@ -120,7 +124,12 @@ function suggestMocsForCurrentFile(
     const allLinksWithMOCs = _.pickBy(
         _.mapValues(parentChildCache, (links, moc) => {
             const connected = _.intersection(links, allFileLinks);
-            return { moc, connected, score: connected.length, type: "through" };
+            return {
+                moc,
+                connected,
+                score: connected.length,
+                type: "through" as Visuals.SuggestionType,
+            };
         }),
         "score"
     );
@@ -148,6 +157,10 @@ function refreshCacheForFile(
         _.filter(tags, { tag: "#moc" }),
         (tag: TagCache) => tag.position.start.line
     );
+    const linkToBasename = (l) => {
+        const path = app.metadataCache.getFirstLinkpathDest(path, "");
+        return path.basename;
+    };
     if (mocTags.length) {
         // find list item that have #moc tag
         const itemsWithMoc = _.compact(
@@ -184,11 +197,14 @@ function refreshCacheForFile(
             // add them to "parent->child" relation
             parentChildCache[basename] = _.map(
                 _.flatMap(allLinks, "links"),
-                "link"
+                linkToBasename
             );
         } else {
             // it's a file level #moc
-            parentChildCache[basename] = _.map(fileLinksAndEmbeds, "link");
+            parentChildCache[basename] = _.map(
+                fileLinksAndEmbeds,
+                linkToBasename
+            );
         }
     } else {
         delete parentChildCache[basename];
@@ -227,6 +243,7 @@ function RenderList({
     drawLink,
 }: {
     items: { link: string; suggestions: number }[];
+    linkClick: Visuals.LinkClickFn;
 }) {
     return (
         <div className="embedded-backlinks">
@@ -415,7 +432,7 @@ export default class MyPlugin extends Plugin {
             );
             if (!rootEl) {
                 const container = view.containerEl;
-                const parent = container.querySelector(".cm-contentContainer");
+                const parent = container.querySelector(".cm-sizer");
 
                 const newElement = document.createElement("div");
                 newElement.className = "simple-hierarchy-breadcrumbs";
@@ -527,62 +544,6 @@ export default class MyPlugin extends Plugin {
         this.refreshAllLeafs();
     };
 
-    refreshTfIDFCache = async () => {
-        const cleanUp = (text: string) => text.replace(/^\w+/g, " ");
-
-        const allFiles = _.filter(
-            await Promise.all(
-                _.map(this.app.vault.getFiles(), async (file: TFile) => {
-                    const text = await this.app.vault.cachedRead(file);
-                    const title = file.basename;
-                    return { title, text: cleanUp(title + " " + text) };
-                })
-            ),
-            "text"
-        );
-        this.corpus = new Corpus(
-            _.map(allFiles, "title"),
-            _.map(allFiles, "text"),
-            false,
-            stopwords
-        );
-    };
-
-    suggestFiles = () => {
-        const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView);
-        const activeDocVector = this.corpus.getDocumentVector(
-            activeLeaf.file.basename
-        );
-        const similarities = _.map(
-            this.app.vault.getFiles(),
-            (file: TFile) => ({
-                doc: file.basename,
-                similarity: Similarity.cosineSimilarity(
-                    activeDocVector,
-                    this.corpus.getDocumentVector(file.basename)
-                ),
-            })
-        );
-        console.log(_.take(_.orderBy(similarities, "similarity", "desc"), 10));
-        const similarDocs = this.corpus.getResultsForQuery(
-            activeLeaf.file.basename +
-                " " +
-                this.app.vault.cachedRead(activeLeaf.file)
-        );
-        const similarDocsWithExplanation = _.map(
-            similarDocs,
-            ([doc, score]) => ({
-                doc,
-                score,
-                explanation: this.corpus.getCommonTerms(
-                    doc,
-                    activeLeaf.file.basename
-                ),
-            })
-        );
-        console.log(similarDocsWithExplanation);
-    };
-
     async onload() {
         await this.loadSettings();
         this.leafsWithBreadcrumbs = [];
@@ -593,16 +554,12 @@ export default class MyPlugin extends Plugin {
         app.workspace.on("active-leaf-change", this.createAllLeafs);
         app.workspace.on("file-open", this.createAllLeafs);
 
-        // app.metadataCache.on("resolved", this.refreshTfIDFCache);
-        // app.workspace.on("active-leaf-change", this.suggestFiles);
-
         this.registerView(
             NOT_ASSIGNED_VIEW,
             (leaf) => new NotAssignedHierarchyView(leaf, this.parentChildCache)
         );
 
         this.refreshCache();
-        this.refreshTfIDFCache();
         this.createAllLeafs();
     }
 
@@ -610,9 +567,6 @@ export default class MyPlugin extends Plugin {
         app.metadataCache.off("resolved", this.refreshCache);
         app.workspace.off("active-leaf-change", this.createAllLeafs);
         app.workspace.off("file-open", this.createAllLeafs);
-
-        app.metadataCache.off("resolved", this.refreshTfIDFCache);
-        app.workspace.off("active-leaf-change", this.suggestFiles);
 
         this.leafsWithBreadcrumbs.forEach(({ root }) => root.unmount());
         document
