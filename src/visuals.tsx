@@ -1,6 +1,5 @@
 import * as React from "react";
 import _ from "lodash";
-// import { Textfit } from "react-textfit";
 import Xarrow from "react-xarrows";
 
 export type LinkClickFn = (link: string) => {
@@ -145,12 +144,6 @@ export function Matrix({
                                             }}
                                         >
                                             {drawLink(cell.value, cell.key)}
-                                            {/* <Textfit
-                                                mode="single"
-                                                forceSingleModeWidth={false}
-                                            >
-                                                {drawLink(cell.value, cell.key)}
-                                            </Textfit> */}
                                         </td>
                                     );
                             })}

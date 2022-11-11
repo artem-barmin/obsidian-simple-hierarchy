@@ -1,63 +1,68 @@
 .suggestion-why {
-	color: grey;
-	font-size: 10px;
+    color: grey;
+    font-size: 10px;
 }
 
 .not-mentioned-suggestion {
-	color: grey;
-	border: 1px solid grey;
-	border-radius: 2px;
-	margin-left: 10px;
+    color: grey;
+    border: 1px solid grey;
+    border-radius: 2px;
+    margin-left: 10px;
 }
 
 .suggestion-connect {
-	font-size: 50%;
+    font-size: 50%;
 }
 
 .simple-hierarchy-matrix {
-	display: flex;
-	justify-content: space-evenly;
-	width: 100%;
+    display: flex;
+    justify-content: space-evenly;
+    width: 100%;
 }
 
-.simple-hierarchy-matrix .backlink-pane{
-	margin-top: 0px;
-	padding: 0px;
+.simple-hierarchy-matrix .backlink-pane {
+    margin-top: 0px;
+    padding: 0px;
 }
 
 .simple-hierarchy-matrix table {
-	background-color: var(--background-color-lt);
-	width: 100%;
+    background-color: var(--background-color-lt);
+    width: 100%;
 }
 
-.simple-hierarchy-matrix .search-result-file-match>div>div {
-	height: 20px;
+.simple-hierarchy-matrix .search-result-file-match > div > div {
+    height: 20px;
 }
 
 .simple-hierarchy-matrix .search-result-file-match {
-	line-height: 20px;
-	padding: 3px;
-	z-index: 1;
+    line-height: 20px;
+    padding: 3px;
+    z-index: 1;
 }
 
-.simple-hierarchy-matrix table, .simple-hierarchy-matrix table td {
-	border: none;
-	border-collapse: collapse;
-	text-align: center;
-	padding: 5px
+.simple-hierarchy-matrix .search-result-file-match:hover {
+    color: hsla(var(--text-normal), 1);
+    background-color: hsla(var(--color-accent-hsl), 1);
+}
+
+.simple-hierarchy-matrix table,
+.simple-hierarchy-matrix table td {
+    border: none;
+    border-collapse: collapse;
+    text-align: center;
 }
 
 .simple-hierarchy-breadcrumbs .embedded-backlinks {
-	padding: 0px;
-	margin: 0px;
+    padding: 0px;
+    margin: 0px;
 }
 
 .simple-hierarchy-breadcrumbs .cm-hmd-internal-link {
-background-color: var(--search-result-background);
-border-radius: var(--radius-s);
-margin: 0;
-color: var(--text-muted);
-box-shadow: 0 0 0 1px var(--background-modifier-border);
-padding: 5px;
+    display: inline-block;
+    background-color: var(--search-result-background);
+    border-radius: var(--radius-s);
+    margin: 0;
+    color: var(--text-muted);
+    box-shadow: 0 0 0 1px var(--background-modifier-border);
+    padding: 2px;
 }
-
