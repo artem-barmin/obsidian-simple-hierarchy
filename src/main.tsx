@@ -158,8 +158,9 @@ function refreshCacheForFile(
         (tag: TagCache) => tag.position.start.line
     );
     const linkToBasename = (l) => {
-        const path = app.metadataCache.getFirstLinkpathDest(path, "");
-        return path.basename;
+        const file = l.link.split("#")[0];
+        const path = app.metadataCache.getFirstLinkpathDest(file, "");
+        return path ? path.basename : file;
     };
     if (mocTags.length) {
         // find list item that have #moc tag
