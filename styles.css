@@ -44,6 +44,7 @@
 	border: none;
 	border-collapse: collapse;
 	text-align: center;
+	padding: 5px
 }
 
 .simple-hierarchy-breadcrumbs .embedded-backlinks {
@@ -57,6 +58,6 @@ border-radius: var(--radius-s);
 margin: 0;
 color: var(--text-muted);
 box-shadow: 0 0 0 1px var(--background-modifier-border);
-padding: 2px;
+padding: 5px;
 }
 
